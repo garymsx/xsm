@@ -92,8 +92,8 @@ CP/Mエミュレータは[CP/M-80 program EXEcutor](https://www.vector.co.jp/sof
 ## XSM 言語仕様
 [XSM クイックリファレンス](quickreference.md)
 
-## ビルドしたプログラムのメモリマップ
-[メモリマップ](memorymap.md)
+## ビルドしたプログラムのメモリ構成
+[メモリ構成](memorymap.md)
 
 ### VSCode用 シンタックスハイライト
 以下のディレクトリに拡張をコピーするとXSMのシンタックスハイライトが使えるようになります。
