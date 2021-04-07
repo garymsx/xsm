@@ -179,6 +179,13 @@
   HL /= BC;
   HL %= D;
   ```
+  乗算、除算、余剰算は以下のファイルをimportしている場合に使用できます。
+  ```
+  import "library/lang/mul.xsm";
+  import "library/lang/mulw.xsm";
+  import "library/lang/div.xsm";
+  import "library/lang/divw.xsm";
+  ```
 
 - インクリメント、デクリメント(++ --)
   ```
