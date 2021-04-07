@@ -695,7 +695,7 @@ n - 数値リテラル
 - 要素数取得関数(length)
   ```
   int[10] hoge;
-  A = sizeof(hoge);  // Aには10が入る
+  A = length(hoge);  // Aには10が入る
   ```
 
 - オフセット関数(offset)
