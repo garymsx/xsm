@@ -104,7 +104,7 @@
     char[][] hoge = {"ABCDEFG", "ABC"}; // 2 x 8 = 16バイト 一番長い文字列の長さに合わせます
     string hoge = "ABCDEFG";            // stringはメモリ参照型なので2バイトです。以下のような構造を持ちます。
                                         // hoge       : DW hoge_string
-                                        // hoge_string: DS "ABCDEFG"
+                                        // hoge_string: DC "ABCDEFG"
     ```
 
 - 定数
