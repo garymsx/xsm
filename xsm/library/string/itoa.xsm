@@ -1,0 +1,47 @@
+import "library/lang/divw.xsm";
+
+/**
+ * hlレジスタの数値を文字列に変換してdeに出力する
+ * @param de 出力先
+ * @param hl 文字列化する数値
+ */
+function itoa(de, hl) {
+    int buf;
+    int value;
+    int base;
+    int[] divTable = {10000,1000,100,10,1} // 割る数のテーブル
+    int divPtr;
+    int num;      // 商、文字列化する対象
+
+    unsafe(bc) {
+        buf = de;
+        value = hl;
+        base = value;
+        divPtr = divTable;
+
+        loop(5) {
+            push bc;
+            hl = divPtr; // テーブルから割る数を取り出す
+            c = *hl;hl++;
+            b = *hl;hl++;
+            divPtr = hl; // 次の割る数のテーブル
+            num = div16(base, bc);
+            base = hl; // 余り
+
+            // バッファに左詰めで書き込んでいく
+            if(value != base) { // baseの値が変化した場所が最初の桁
+                hl = buf;
+                a = low(num);
+                a += '0';
+                *hl = a;
+                hl++;
+                buf = hl;
+            }
+            pop bc;
+        }
+        hl = buf;
+        *hl = '\0';
+    }
+
+    return;
+}

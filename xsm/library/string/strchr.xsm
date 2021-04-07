@@ -1,0 +1,14 @@
+/*
+ * 文字列から文字を探す
+ * @param  hl 検索対象の文字列
+ * @param  a  検索する文字
+ * @return hl 見つかったアドレス
+ */
+function strchr(hl,a) return hl {
+    while() {
+        b = *hl;
+        if(a == b) return hl;
+        if(b == 0) return 0;
+        hl++
+    }
+}

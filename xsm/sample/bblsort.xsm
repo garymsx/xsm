@@ -1,0 +1,54 @@
+// バブルソートサンプルプログラム
+import "print.xsm";
+
+org 0x100;
+
+unsafe(bc) {
+    byte i;
+    byte j;
+    byte[10] buf = {10,9,8,7,6,5,4,3,2,1};
+
+    for(i = 0;i < length(buf) - 1;i++) {
+        a = i;
+        a++;
+        for(j = a;j < length(buf);j++) {
+            d = read_buf(i);
+            e = read_buf(j);
+            if(d > e) {
+                // dとeをswap
+                write_buf(i, e);
+                write_buf(j, d);
+            }
+        }
+    }
+
+    // 確認
+    for(d = 0; d < length(buf); d++) {
+        a = read_buf(d);
+        printNum(a);cr();
+    }
+}
+
+return;
+
+function read_buf(c) return c {
+    using(hl) {
+        unsafe {
+            hl = &buf;
+            hl += c;
+            c = *hl;
+            return c;
+        }
+    }
+}
+
+function write_buf(c, a) {
+    using(hl) {
+        unsafe {
+            hl = &buf;
+            hl += c;
+            *hl = a;
+        }
+    }
+}
+

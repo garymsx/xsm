@@ -1,0 +1,130 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Xsm",
+	"patterns": [
+		{"include": "#keywords"},
+		{"include": "#constant"},
+		{"include": "#variable"},
+		{"include": "#entity"},
+		{"include": "#storage"},
+		{"include": "#strings"},
+		{"include": "#comment"}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.control.xsm",
+					"match": "\\b(bin|qtr|oct|hex|sizeof|length|offset|assert|if|else|while|for|loop|switch|case|default|break|continue|return|call|goto|push|pop|and|xor|or|cp|rlc|rrc|rl|rr|sla|sll|sra|srl|rld|rrd|rlca|rrca|rla|rra|bit|res|set|in|ini|inir|ind|indr|out|outi|outr|outd|outdr|ldi|ldir|cpi|cpir|cpd|cpdr|rst|nop|halt|di|ei|im|exx|ex|daa|cpl|neg|ccf|scf|clc|org|include|import|inline|define|unsafe|using|debug|on|off|try|catch|finally|throw|move|clear|dataorg|shadoworg|db|dw|dc)\\b"
+				}
+			]
+		},
+		"constant": {
+			"patterns": [
+				{
+					"name": "constant.numeric.xsm",
+					"match": "\\b(\\d+|0x\\h+|0b[01]+|0q[0-3]+)\\b"
+				},
+				{
+					"name": "constant.language.xsm",
+					"match": "\\b(true|false)\\b"
+				}
+			]
+		},
+		"variable": {
+			"patterns": [
+				{
+					"name": "variable.language.xsm",
+					"match": "\\b(ixh|ixl|iyh|iyl|IXH|IXL|IYH|IYL|af|bc|de|hl|AF|BC|DE|HL|ix|iy|IX|IY|sp|SP|a|b|c|d|e|h|l|it|rf|A|B|C|D|E|H|L|IT|RF)\\b|\\$(c|nc|z|nz|pe|po|m|p|C|NC|Z|NZ|PE|PO|M|P)\\b"
+				}
+			]
+		},
+		"entity": {
+			"patterns": [
+				{
+					"match": "\\b(function)\\s+(\\w+)\\b",
+					"captures": {
+						"1": {"patterns": [{"include": "#function"}]},
+						"2": {"patterns": [{"include": "#functionName"}]}
+					}
+				}
+			],
+			"repository": {
+				"function": {
+					"patterns": [
+						{
+							"name" : "storage.type.xsm",
+							"match": "function"
+						}
+					]
+				},
+				"functionName": {
+					"patterns": [
+						{
+							"name": "entity.name.function.xsm",
+							"match": "\\w+"
+						}
+					]
+				}
+			}
+		},
+		"storage": {
+			"patterns": [
+				{
+					"name": "storage.type.xsm",
+					"match": "\\b(byte|sbyte|int|sint|string|char|struct)\\b"
+				},
+				{
+					"name": "storage.modifier.xsm",
+					"match": "\\b(const|unsigned|signed|shadow)\\b|\\(\\+\\)"
+				}
+			]
+		},
+		"strings": {
+			"patterns": [
+				{
+					"name": "string.quoted.double.xsm",
+					"begin": "\"",
+					"end": "\"",
+					"patterns": [
+						{
+							"name": "constant.character.escape.xsm",
+							"match": "\\\\."
+						}
+					]
+				},
+				{
+					"name": "string.quoted.single.xsm",
+					"begin": "'",
+					"end": "'",
+					"patterns": [
+						{
+							"name": "constant.character.escape.xsm",
+							"match": "\\\\."
+						}
+					]
+				},
+				{
+					"name": "string.quoted.other.xsm",
+					"begin": "`",
+					"end": "`"
+				}
+			]
+		},
+		"comment": {
+			"patterns": [
+				{
+					"name": "comment.block.xsm",
+					"begin": "/\\*",
+					"end": "\\*/"
+				},
+				{
+					"name": "comment.line.double-dash.xsm",
+					"begin": "//",
+					"end": "$"
+				}
+			]
+		}
+	},
+	"scopeName": "source.xsm"
+}

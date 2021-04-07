@@ -1,0 +1,23 @@
+/**
+ * 汎用掛け算処理、hl *= bcを実行
+ * @param  hl 掛けられる数
+ * @param  bc 掛ける数
+ * @return hl 計算結果
+ * @using  a
+ * @remark bc == 0でループが終了するので速度が一定ではない
+ */
+function MULW(hl,bc) return hl {
+    using(de,bc) {
+        ex de,hl;
+        hl = 0;
+        @ {
+            bc>>;               // mul8と違いローテーションを使わない
+            if($c) hl += de;
+            de<<;
+            // Aレジスタ保護の為、ループを使わずにBCレジスタの0判定をしている
+            // 0判定はINC B/DEC Bが実行される
+            if(b != 0 && c != 0) continue;
+        }
+        return hl;
+    }
+}

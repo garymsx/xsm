@@ -1,0 +1,66 @@
+/**
+ * 汎用割り算処理、hl /= a を実行
+ * @param  hl  割られる数
+ * @param  a   割る数
+ * @return hl  計算結果
+ */
+function DIV(hl,a) return hl {
+    using(bc) {
+        hl = div8(hl, a);
+        return hl;
+    }
+}
+
+/**
+ * 汎用剰余算処理、hl %= a を実行
+ * @param  hl  割られる数
+ * @param  a   割る数
+ * @return hl  余り
+ */
+function MOD(hl,a) return hl {
+    using(bc) {
+        div8(hl, a);
+        return hl;
+    }
+}
+
+/**
+ * 汎用割り算処理、hl /= a を実行
+ * @param  hl  割られる数
+ * @param  a   割る数
+ * @return bc  計算結果 (hl 余り)
+ */
+function div8(hl,a) return bc {
+    // 0で除算
+    if(a == 0) return 0;
+
+    using(af,de) {
+        // Aを左詰めする、フラグが押し出されるまでループ
+        b = 8;
+        @ {                  // @{〜} 簡易ラベル、continueとbreakが使えるようになる
+            b++;
+            a<<<;
+            on $nc continue; // 押し出し判定
+        }
+        a>>>;                // 押し出され分を戻す
+        d = a;               // 左詰めしたAを16bitに拡張
+        e = 0;
+
+        a = b;
+        bc = 0;
+        while() {
+            if(hl >= de) { // 元の数のほうが大きければdeを引く
+                hl -= de;
+                bc++;
+            }
+            a--;
+            on $z break;     // ループ回数処理したらここで打ち切り
+            // ループ時の処理
+            de>>; // 割る数の桁下がり
+            bc<<; // 商の桁上がり
+        }
+
+        return bc;
+    }
+
+}

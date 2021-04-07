@@ -1,0 +1,25 @@
+{
+    "name": "extended-assembly-language",
+    "displayName": "Extended Assembly Language",
+    "description": "Syntax highlighting for xsm",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.53.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "xsm",
+            "aliases": ["Xsm", "xsm"],
+            "extensions": [".xsm"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "xsm",
+            "scopeName": "source.xsm",
+            "path": "./syntaxes/xsm.tmLanguage.json"
+        }]
+    }
+}

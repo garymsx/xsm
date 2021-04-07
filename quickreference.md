@@ -214,56 +214,6 @@
   A = hoge("Hello World\n");
   ```
 
-### 内部関数
-
-- データ定義関数(bin/qtr/hex/from)
-
-  ```
-  byte[] hoge  = bin("00000000"         // 2進数表記
-                   + "11,11,11,11");    // 数字以外は無視されます
-  byte[] hoge = qtr("0123,0123");       // 4進数
-  byte[] hoge = hex("FF,FF");           // 16進数
-  byte[] hoge = from("image.dat");      // ファイル読み込み
-  ```
-
-
-- 分離関数(high/low)
-  ```
-  int hoge = 0x1234;
-  A = high(hoge);     // Aには0x12が入る
-  A = low(hoge);      // Aには0x23が入る
-  ```
-
-- サイズ取得関数(sizeof)
-  ```
-  int[10] hoge;
-  A = sizeof(hoge);  // Aには20が入る
-  ```
-
-- 要素数取得関数(length)
-  ```
-  int[10] hoge;
-  A = sizeof(hoge);  // Aには10が入る
-  ```
-
-- オフセット関数(offset)
-  
-  構造体メンバーの先頭からのオフセット値を求めます。構造体に配列を使うので必須になってくる機能です。
-
-  ```
-  // 例 hoge[1].hoge2のアドレスを求める
-  struct HOGE {
-    byte  fuga1;
-    byte  fuga2;
-  };
-  HOGE[2] hoge;
-  HL = hoge;                // hoge[0]のアドレスを取得
-  BC = sizeof(HOGE);        // HOGEの構造体サイズを求める
-  HL += BC;                 // hoge[1]のアドレスが求まる
-  BC = offset(HOGE.fuga2);  // BCには2が入る
-  HL += BC;                 // hoge[1].fuga2の先頭アドレス
-  ```
-
 ### 関数定義
 
 - 書式
@@ -285,7 +235,6 @@
   // BIOSや常駐処理を呼ぶ際は以下のように定義できます。
   function hoge(C) = 0xe000; // アドレスを指定
   ```
-
 
 ### ラベルとジャンプ
 
@@ -717,6 +666,69 @@ n - 数値リテラル
 |x>>|〇 |〇 |〇 |
 
 
+### 内部関数
+
+- データ定義関数(bin/qtr/hex/from)
+
+  ```
+  byte[] hoge  = bin("00000000"         // 2進数表記
+                   + "11,11,11,11");    // 数字以外は無視されます
+  byte[] hoge = qtr("0123,0123");       // 4進数
+  byte[] hoge = hex("FF,FF");           // 16進数
+  byte[] hoge = from("image.dat");      // ファイル読み込み
+  ```
+
+- 分離関数(high/low)
+  ```
+  int hoge = 0x1234;
+  A = high(hoge);     // Aには0x12が入る
+  A = low(hoge);      // Aには0x23が入る
+  ```
+
+- サイズ取得関数(sizeof)
+  ```
+  int[10] hoge;
+  A = sizeof(hoge);  // Aには20が入る
+  ```
+
+- 要素数取得関数(length)
+  ```
+  int[10] hoge;
+  A = sizeof(hoge);  // Aには10が入る
+  ```
+
+- オフセット関数(offset)
+
+  構造体メンバーの先頭からのオフセット値を求めます。構造体に配列を使うので必須になってくる機能です。
+
+  ```
+  // 例 hoge[1].hoge2のアドレスを求める
+  struct HOGE {
+    byte  fuga1;
+    byte  fuga2;
+  };
+  HOGE[2] hoge;
+  HL = hoge;                // hoge[0]のアドレスを取得
+  BC = sizeof(HOGE);        // HOGEの構造体サイズを求める
+  HL += BC;                 // hoge[1]のアドレスが求まる
+  BC = offset(HOGE.fuga2);  // BCには2が入る
+  HL += BC;                 // hoge[1].fuga2の先頭アドレス
+  ```
+
+- 半角変換関数(half)
+  
+  ```
+  string hoge = half("あいうえお"); // MSXのひらがなASCIIコードに変換されます。
+  ```
+
+- ビット判定関数(set/res)
+
+  ```
+  // if文内で使える関数です。
+  if(set0(A)) { ... } // Aレジスタのビット0がONの場合に条件が成立します。
+  if(res7(B)) { ... } // Bレジスタのビット7がOFFの場合に条件が成立します。
+  ```
+
 #### その他の命令
 
 一般的なニーモニックと同じように使えますが、一部書式が変更されているものがあります。  
@@ -856,7 +868,7 @@ n - 数値リテラル
   import "hoge.xsm";                  // 外部ファイルを取り込みます。取り込まれたファイルはその場に展開されずに後部に追加されます。
   import "hoge.xsm", 0x2000;          // アドレス指定付きで読み込みます、orgと同じです。
   import "hoge.xsm", 0x8000, shadow;  // プログラム全体を指定アドレスにshadowとして読み込みます。これで読み込まれたプログラムはバイナリに含まれることはありません。
-                                      // 常駐プログラムを呼ぶ場合に使います
+                                      // 常駐プログラムを呼ぶ場合に使います。
   ```
 
 - include

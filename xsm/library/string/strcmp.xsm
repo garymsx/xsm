@@ -1,0 +1,22 @@
+/**
+ * bcとdeのアドレスが差す文字列の比較
+ * @param  bc 比較する文字列のアドレス
+ * @param  de 比較する文字列のアドレス
+ * @return a  一致する場合は a = 0
+ *            bc<de なら a<0
+ *            bc>de なら a>0
+ */
+function strcmp(bc,de) return a {
+    unsafe {
+        using(bc,de,hl) {
+            while() {
+                a = *bc;
+                a -= *de; // (bc)と(de)を比較
+                // 不一致、もしくは終了文字の場合はreturn
+                if($nz || *de == '\0') return a;
+                bc++;
+                de++;
+            }
+        }
+    }
+}

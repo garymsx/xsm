@@ -1,0 +1,19 @@
+import "library/string/strchr.xsm";
+
+/*
+ * 文字列連結
+ * @param  bc 連結先の文字列
+ * @param  de 連結する文字列
+ */
+function strcat(bc,hl) {
+    push hl;
+    bc = strchr(bc, '\0');
+    pop hl;
+    while() {
+        a = *hl;
+        *bc = a;
+        if(a == 0) break;
+        hl++;
+        bc++;
+    }
+}
