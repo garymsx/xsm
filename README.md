@@ -64,8 +64,7 @@ javaのbinディレクトリを環境変数に指定してください。
 @echo off
 setlocal
 rem Javaのパスを設定してください
-rem set JAVAPATH=C:\pleiades\java\jdk-16\bin  ← remを削除し、javaのインストール先に変更します。
-rem set PATH=%JAVAPATH%;%PATH%                ← remを削除します。
+rem set PATH=C:\pleiades\java\jdk-16\bin;%PATH%
 set CURRENT=%~dp0
 java -jar "%CURRENT%xsm.jar" -library %CURRENT% %*
 endlocal
@@ -91,6 +90,9 @@ CP/Mエミュレータは[CP/M-80 program EXEcutor](https://www.vector.co.jp/sof
 
 ## XSM 言語仕様
 [XSM クイックリファレンス](quickreference.md)
+
+## ビルドオプション
+[ビルドオプション](options.md)
 
 ## ビルドしたプログラムのメモリ構成
 [メモリ構成](memorymap.md)
