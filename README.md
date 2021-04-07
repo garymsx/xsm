@@ -46,7 +46,7 @@ function strcmp(BC,DE) return A {
 本ドキュメントはWindows環境を前提に記述されていますので、Macやlinux環境の方は適宜内容の読み替えが必要になります。
 
 ## インストール
-XSM一式を任意のディレクトリに保存しインストール先にパスを通します。
+[XSM](xsm)一式を任意のディレクトリに保存しインストール先にパスを通します。
 XSMはJavaVMで実行されますのでOSを選ばずに実行できますが、  
 その為にJavaVMが必要になりますのでJRE8.0以上のランタイムを用意してください。
 [OpenJDK16](https://jdk.java.net/16/) で動作するのを確認しています。
@@ -97,5 +97,5 @@ CP/Mエミュレータは[CP/M-80 program EXEcutor](https://www.vector.co.jp/sof
 [メモリ構成](memorymap.md)
 
 ## VSCode用 シンタックスハイライト
-以下のディレクトリに拡張をコピーするとXSMのシンタックスハイライトが使えるようになります。  
+以下のディレクトリに[VSCode拡張](extended-assembly-language))をコピーするとXSMのシンタックスハイライトが使えるようになります。  
 C:\Users\(ユーザー名)\.vscode\extensions
