@@ -104,3 +104,7 @@ CP/Mエミュレータは[CP/M-80 program EXEcutor](https://www.vector.co.jp/sof
 ## VSCode用 シンタックスハイライト
 以下のディレクトリに[VSCode拡張](vscode-extension)をコピーするとXSMのシンタックスハイライトが使えるようになります。  
 C:\Users\(ユーザー名)\.vscode\extensions
+
+## ライセンス
+本ソフトウェアの使用について特に制限はもうけませんが、
+本ソフトウェア使用によって生じる一切の請求、損害、その他の義務について何らの責任も負わないものとします。
