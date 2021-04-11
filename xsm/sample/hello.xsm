@@ -1,0 +1,11 @@
+org 0x100;
+
+print("Hello World\r\n$");
+
+return;
+
+// CP/M System Call
+function print(de) {
+    c = 0x09;
+    call 0x0005;
+}
