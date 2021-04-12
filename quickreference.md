@@ -755,7 +755,8 @@ n - 数値リテラル
 - pop  
   ```
   pop hl;
-  pop hl,de,bc;  // 逆順にpopします 
+  pop bc,de,hl;  // 記述した後ろpopします(hl -> de -> bc)
+                 // push合わせると見やすくなるためです 
   ```
 
 - ldi / ldir / ldd / lddr
