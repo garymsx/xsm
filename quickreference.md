@@ -222,6 +222,7 @@
   ```
   // パラメータがレジスタ、もしくはメモリ渡しの場合
   // returnは応答に使用するレジスタ、usingは呼び出しによって壊れるレジスタを定義します
+  // ここのusingは未初期化のレジスタを使用時に警告を出すことが目的なので無くてもかまいません。
   function hoge(BC, string fuga1, string fuga2) return A using B,C {
     ...
   }
