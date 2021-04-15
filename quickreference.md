@@ -234,6 +234,9 @@
     }
   }
   
+  // デフォルト値
+  function hoge(C = 0x05); // パラメータ省略時の値を指定
+
   // BIOSや常駐処理を呼ぶ際は以下のように定義できます。
   function hoge(C) = 0xe000; // アドレスを指定
   ```
@@ -741,6 +744,26 @@ n - 数値リテラル
   if(res7(B)) { ... } // Bレジスタのビット7がOFFの場合に条件が成立します。
   ```
 
+- 型名取得
+  ```
+  // 型名を文字列で取得します。inline関数の判定などで使えます。
+  inline hoge(param) {
+    if(typename(param) == "string") info("文字です"); 
+    if(typename(param) == "int")    info("数値です");     // リテラル数値指定は全てintになります。
+    if(typename(param) == "A")      info("レジスタです");  // レジスタ
+    if(typename(param) == "byte")   info("byte型です");   // 変数
+  } 
+  ```
+
+- メッセージ関数(error/warn/info)
+
+  ```
+  ログを出力する関数です。inline関数のエラーに使ったりします。
+  error("message"); 
+  warn("message");
+  info("message"); 
+  ```
+
 #### その他の命令
 
 一般的なニーモニックと同じように使えますが、一部書式が変更されているものがあります。  
@@ -819,7 +842,7 @@ n - 数値リテラル
   ```
   内部的にLDIRを実行する命令です。BC/DE/HLレジスタが壊れます。
   
-- clear dst, value [,size]
+- clear
   ```
   byte[5] buf = {0,1,2,3,4};
   clear buf, 0;

@@ -15,7 +15,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.xsm",
-					"match": "\\b(bin|qtr|oct|hex|sizeof|length|offset|assert|if|else|while|for|loop|switch|case|default|break|continue|return|call|goto|push|pop|and|xor|or|cp|rlc|rrc|rl|rr|sla|sll|sra|srl|rld|rrd|rlca|rrca|rla|rra|bit|res|set|in|ini|inir|ind|indr|out|outi|outr|outd|outdr|ldi|ldir|cpi|cpir|cpd|cpdr|rst|nop|halt|di|ei|im|exx|ex|daa|cpl|neg|ccf|scf|clc|org|include|import|inline|define|unsafe|using|debug|on|off|try|catch|finally|throw|move|clear|dataorg|shadoworg|db|dw|dc|repeat)\\b"
+					"match": "\\b(bin|qtr|oct|hex|sizeof|length|offset|assert|if|else|while|for|loop|switch|case|default|break|continue|return|call|goto|push|pop|and|xor|or|cp|rlc|rrc|rl|rr|sla|sll|sra|srl|rld|rrd|rlca|rrca|rla|rra|bit|res|set|in|ini|inir|ind|indr|out|outi|outr|outd|outdr|ldi|ldir|cpi|cpir|cpd|cpdr|rst|nop|halt|di|ei|im|exx|ex|daa|cpl|neg|ccf|scf|clc|org|include|import|inline|define|unsafe|using|debug|on|off|try|catch|finally|throw|move|clear|dataorg|shadoworg|db|dw|dc|repeat|error|warn|info|typename)\\b"
 				}
 			]
 		},
