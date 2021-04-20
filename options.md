@@ -16,6 +16,13 @@
   > xsmc.bat hoge.xsm hoge.bin
   ```
 
+## 出力先指定
+  ビルドファイル名がディレクトリの場合はそのディレクトリにcomファイルを作ります。
+
+  ```
+  > xsmc.bat hoge.xsm .\build
+  ```
+
 ## -debug
   debug on 状態で起動します。
   ビルド時に生成されるニーモニックが確認できます。  
