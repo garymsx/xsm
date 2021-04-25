@@ -217,7 +217,11 @@
 
 - 関数呼び出し
   ```
-  A = hoge("Hello World\n");
+  A = hoge(B,2);
+  A = fuga("Hello World\n");
+  // または
+  A = hoge(B, C = 2); // 明示的に代入を表記することで壊れるレジスタが分かるだけ。
+  A = fuga(HL = "Hello World\n");
   ```
 
 ### 関数定義
@@ -842,7 +846,10 @@ n - 数値リテラル
   ```
   byte[5] buf = {0,1,2,3,4};
   byte[5] buf2;
-  move buf2, buf;
+  move buf2, buf;    // buf2へbufをコピー、以下が使用される
+                     // de - 転送先
+                     // hl - 転送元
+                     // bc - サイズ
   move buf2, buf, 5; // サイズ指定も可能
   ```
   内部的にLDIRを実行する命令です。BC/DE/HLレジスタが壊れます。
