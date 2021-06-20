@@ -1,0 +1,373 @@
+// system reset
+const int BDOS = 0x0005;
+const int DTA = 0x0080;
+
+const int FCB1 = 0x5c;  // パラメータ１
+const int FCB2 = 0x6c;  // パラメータ２
+
+struct FCB_CPM {
+    byte     drive;              // ドライブ番号 ファイルの存在するディスクドライブを示します(0=デフォルトドライブ、1=A、2=B...7=H)。
+    char[8]  name;               // ファイル名 8文字に満たないお分はスペース(20H)で埋めます。
+    char[3]  ext;                // 拡張子     3文字に満たないお分はスペース(20H)で埋めます。
+    byte     currentBlock;       // カレントブロック シーケンシャルアクセスの際、参照中のブロック番号を示します(0x14、0x15参照)
+    byte     filler1;            // システムで使用
+    byte     recordSize;         // ブロック中のレコード数が設定されます(0x14、0x15参照)
+    byte     filler2;            // システムで使用
+    byte[4]  fileSize;           // ファイルサイズ
+    int      date;               // 日付
+    int      time;               // 時刻
+    byte     deviceId;           // デバイスID 周辺装置・ディスクファイルの区別が設定されます。
+    byte     directoryLocation;  // ディレクトリロケーション 何番めのディレクトリエントリに骸当するファイルであるかが設定されます。
+    int      startCluster;       // 先頭クラスタ
+    int      endCluster;         // 終了クラスタ
+    int      position;           // 相対位置  最後にアクセスされたクラスタの先頭クラスタからのファイル内での相対位置が番号で設定されます。
+    byte     currentRecord;      // カレントレコード シーケンシャルアクセスの際、参照中のレコード番号を示します(0x14、0x15参照)
+    byte[3]  randomRecord;       // ランダムレコード アクセスしたいレコードを指定します(0x21、0x22、0x28参照)。
+}
+
+struct FCB {
+    byte     drive;              // ドライブ番号 ファイルの存在するディスクドライブを示します(0=デフォルトドライブ、1=A、2=B...7=H)。
+    char[8]  name;               // ファイル名 8文字に満たないお分はスペース(20H)で埋めます。
+    char[3]  ext;                // 拡張子     3文字に満たないお分はスペース(20H)で埋めます。
+    byte     filler1;            // システムで使用
+    byte     filler2;            // システムで使用
+    int      recordSize;         // レコードサイズ(0x26、0x27参照)
+    byte[4]  fileSize;           // ファイルサイズ
+    int      date;               // 日付
+    int      time;               // 時刻
+    byte     deviceId;           // デバイスID 周辺装置・ディスクファイルの区別が設定されます。
+    byte     directoryLocation;  // ディレクトリロケーション 何番めのディレクトリエントリに骸当するファイルであるかが設定されます。
+    int      startCluster;       // 先頭クラスタ
+    int      endCluster;         // 終了クラスタ
+    int      position;           // 相対位置  最後にアクセスされたクラスタの先頭クラスタからのファイル内での相対位置が番号で設定されます。
+    byte     filler3;            // システムで使用
+    byte[4]  randomRecord;       // ランダムレコード アクセスしたいレコードを指定します(0x21、0x22、0x28参照)。
+}
+
+// _BUFINTRINGの行バッファ(サンプル)
+struct LINE_BUF {
+    byte max;           // 最大サイズ bufferのサイズをセットすること
+    byte size;          // 入力された文字列
+    char[41]  buffer;   // バッファ、用途に合わせて定義しなおす (40文字+'\0'用)
+}
+
+/**
+ * システムリセット
+ */
+function _TERM0(c = 0x00) = BDOS;
+
+/**
+ * コンソール入力
+ * @return a コンソールから入力した1文字
+ */ 
+function _CONIN(c = 0x01) return a = BDOS;
+
+/**
+ * コンソール出力
+ * @param e 出力する文字コード
+ */
+function _CONOUT(e, c = 0x02) = BDOS;
+
+/**
+ * 補助入力
+ * @return a 補助入力から入力した1文字
+ */ 
+function _AUXIN(c = 0x03) return a = BDOS;
+
+/**
+ * 補助出力
+ * @param e 補助入力へ出力する文字コード
+ */
+function _AUXOUT(e, c = 0x04) = BDOS;
+
+/**
+ * プリンタ出力
+ * @param e 出力する文字コード
+ */
+function _LSTOUT(e, c = 0x05) = BDOS;
+
+/**
+ * 直接コンソール入出力(エコーバックなし)
+ * @param e 0xFF - 入力、 0xFF以外 - セットされた値を文字コードとみなしてコンソールに出力
+ * @return a コンソールから入力した1文字、コンソール入力がないときは0
+ */ 
+function _DIRIO(e, c = 0x06) return a = BDOS;
+
+/**
+ * 直接コンソール入力(エコーバックなし)
+ * @return a コンソールから入力した1文字
+ * @remark CP/M非互換 
+ */ 
+function _DIRIN(c = 0x07) return a = BDOS;
+
+/**
+ * コンソール入力(エコーバックなし)
+ * @return a コンソールから入力した1文字
+ * @remark CP/M非互換
+ */ 
+function _INNOE(c = 0x08) return a = BDOS;
+
+/**
+ * 文字列出力
+ * @param de コンソールに出力する文字列があるメモリの先頭アドレス
+ */ 
+function _STROUT(de, c = 0x09) = BDOS;
+
+/**
+ * 文字列入力
+ * @param de 行バッファの先頭アドレス(LINE_BUF構造体)
+ *           de + 0 最大文字数
+ *           de + 1 実際に入力された文字数
+ *           de + 2 入力された文字列
+ */ 
+function _BUFIN(de, c = 0x0a) = BDOS;
+
+/**
+ * コンソール入力状態のチェック
+ * @return a 0xFF - コンソール入力がある 0x00 - コンソール入力がない
+ */ 
+function _CONST(c = 0x0b) return a = BDOS;
+
+/**
+ * バージョン番号の獲得
+ * @return hl MSX-DOSでは必ず0x0022が戻る。
+ */ 
+function _CPMVER(c = 0x0c) return hl = BDOS;
+
+/**
+ * ディスクリセット
+ */ 
+function _DSKRST(c = 0x0d) = BDOS;
+
+/**
+ * デフォルトドライブの設定
+ * @param e デフォルトドライブ番号(A=0,B=1,H=7)
+ */ 
+function _SELDSK(e, c = 0x0e) = BDOS;
+
+/**
+ * ファイルのオープン
+ * @param de オープンされていないFCBの先頭アドレス
+ *           FCBのカレントブロック 読み出すブロック番号
+ * @return A 0x00 - オープン成功 0xff - オープン失敗
+ */ 
+function _FOPEN(de, c = 0x0f) return a = BDOS;
+
+/**
+ * ファイルのクローズ
+ * @param de オープンされたFCBの先頭アドレス
+ * @return a 0x00 - クローズ成功 0xff - クローズ失敗
+ */ 
+function _FCLOSE(de, c = 0x10) return a = BDOS;
+
+/**
+ * ファイルの検索(最初の一致)
+ * @param de オープンされていないFCBの先頭アドレス
+ * @return a 0x00 - クローズ成功 0xff - クローズ失敗
+ */ 
+function _SFIRST(de, c = 0x11) return a = BDOS;
+
+/**
+ * ファイルの検索(後続の一致)
+ * @return a 0x00 - クローズ成功 0xff - クローズ失敗
+ */ 
+function _SNEXT(c = 0x12) return a = BDOS;
+
+/**
+ * ファイルの削除
+ * @param de オープンされていないFCBの先頭アドレス
+ * @return a 0x00 - 成功 0xff - 失敗
+ */ 
+function _FDEL(de, c = 0x13) return a = BDOS;
+
+/**
+ * シーケンシャルな読み出し
+ * @param de オープンされたFCBの先頭アドレス
+ * @return a 0x00 - 成功 0xff - 失敗
+ * DTA + 128 読み出しが成功したときは、DTA以降の128バイトに読み込んだレコードをセットします。
+ */ 
+function _RDSEQ(de, c = 0x14) return a = BDOS;
+
+/**
+ * シーケンシャルな書き込み
+ * @param de オープンされたFCBの先頭アドレス
+ * FCB.currentRecord   書き込むレコード番号
+ * DTA + 128           書き込むデータ
+ * @return a 0x00 - 成功 0xff - 失敗
+ */ 
+function _WRSEQ(de, c = 0x15) return a = BDOS;
+
+/**
+ * ファイルの作成
+ * @param de オープンされていないFCBの先頭アドレス
+ * FCB.currentBlock   読み出すプロック番号
+ * @return a 0x00 - 成功 0xff - 失敗
+ */ 
+function _FMAKE(de, c = 0x16) return a = BDOS;
+
+/**
+ * ファイル名の変更
+ * @param de オープンされていないFCBの先頭アドレス
+ * FCB + 0   旧ファイル名
+ * FCB + 16  新ファイル名
+ * @return a 0x00 - 成功 0xff - 失敗
+ */ 
+function _FREN(de, c = 0x17) return a = BDOS;
+
+/**
+ * ログインベクトルの獲得
+ * @return HL オンラインドライブ情報
+ */ 
+function _LOGIN(c = 0x18) return hl = BDOS;
+
+/**
+ * デフォルトドライブ番号の獲得
+ * @return a デフォルトドライブ番号(A=0,B=1,H=7)
+ */ 
+function _CURDRV(c = 0x19) return a = BDOS;
+
+/**
+ * 転送先アドレス(DTA) の設定
+ * @param de 設定するDTAアドレス
+ */ 
+function _SETDTA(de, c = 0x1a) = BDOS;
+
+/**
+ * ディスク情報の獲得
+ * @param e 設定するDTAアドレス
+ * @return a  - 1クラスタあたりの論理セクタ数 FFH 指定ドライブがオフライン
+ *         bc - セクタのサイズ(バイト単位)
+ *         de - クラスタの総数
+ *         hl - 未使用クラスタの総数
+ *         ix - DPBの先頭アドレス
+ *         iy - FATバッファの先頭アドレス
+ */ 
+function _ALLOC(e, c = 0x1b) = BDOS;
+
+/**
+ * ランダムな読み出し
+ * @param de オープンされたFCBの先頭アドレス
+ * FCB.randomRecord 読み出すレコード番号
+ * @return a 0x00 - 成功 0xff - 失敗
+ * DTA + 128 読み出しが成功したときは、DTA以降の128バイトに読み込んだレコードをセットします。
+ */ 
+function _RDRND(de, c = 0x21) return a = BDOS;
+
+/**
+ * ランダムな書き込み
+ * @param de オープンされたFCBの先頭アドレス
+ * FCB.randomRecord 書き込むレコード番号
+ * DTA + 128        書き込むデータ
+ * @return a 0x00 - 成功 0xff - 失敗
+ */ 
+function _WRRND(de, c = 0x22) return a = BDOS;
+
+/**
+ * ファイルサイズの獲得
+ * @param de オープンされたFCBの先頭アドレス
+ * @return a 0x00 - 成功 0xff - 失敗
+ * 獲得が成功すれば、FCBのランダムレコードフィールドに指定されたファイルの128バイト単位のサイズをセットします。
+ */ 
+function _FSIZE(de, c = 0x23) return a = BDOS;
+
+/**
+ * ランダムレコードフィールドの設定
+ * @param de オープンされたFCBの先頭アドレス
+ * FCB.currentBlock  目的のブロック
+ * FCB.currentRecord 目的のレコード
+ * @return
+ * ランダムレコードフィールドに指定されたFCBのカレントブロックフィールドと
+ * カレントレコードフィールドから計算したカレントレコードポジションを設定します。
+ */ 
+function _SETRND(de, c = 0x24) = BDOS;
+
+/**
+ * ランダムブロック書き込み
+ * @param de オープンされたFCBの先頭アドレス
+ * FCB.recordSize    書き込むレコードサイズ
+ * FCB.randomRecord  書き込みを開始するレコード
+ * @param hl 書き込むレコード数
+ * DTA以降のメモリ領域 書き込むデータ
+ * @return a 0x00 - 成功 0xff - 失敗
+ */ 
+function _WRBLK(de, c = 0x26) return a = BDOS;
+
+/**
+ * ランダムブロック読みだし
+ * @param de オープンされたFCBの先頭アドレス
+ * FCB.recordSize    読み出すレコードサイズ
+ * FCB.randomRecord  読み出しを開始するレコード
+ * @param hl 読み出すレコード数
+ * @return a 0x00 - 成功 0xff - 失敗
+ *         hl 実際に読み込んだレコードの個数
+ */ 
+function _RDBLK(de, c = 0x27) return a = BDOS;
+
+/**
+ * 「0」の書き込みをともなうランダムな書き込み
+ * @param de オープンされたFCBの先頭アドレス
+ * FCB.randomRecord 書き込むレコード番号
+ * DTA + 128 書き込むデータ
+ * @return a 0x00 - 成功 0xff - 失敗
+ */ 
+function _WRZER(de, c = 0x28) return a = BDOS;
+
+/**
+ * 日付の獲得
+ * @return a  曜日(0=日曜...6=土曜)
+ *         hl 年(1980-2079)
+ *         d  月(1～12)
+ *         e  月(1～31)
+ */ 
+function _GDATE(c = 0x2a) = BDOS;
+
+/**
+ * 日付の設定
+ * @param  hl 年(1980-2079)
+ * @param  d  月(1～12)
+ * @param  e  月(1～31)
+ * @return a 0x00 - 成功 0xff - 失敗
+ */ 
+function _SDATE(hl,d,e,c = 0x2b) return a = BDOS;
+
+/**
+ * 時刻の獲得
+ * @return h 時
+ *         l 分
+ *         d 秒
+ *         e 1/100秒
+ */ 
+function _GTIME(c = 0x2c) = BDOS;
+
+/**
+ * 時刻の設定
+ * @param  h 時
+ * @param  l 分
+ * @param  d 秒
+ * @return a 0x00 - 成功 0xff - 失敗
+ */ 
+function _STIME(h,l,d,c = 0x2d) = BDOS;
+
+/**
+ * ベリファイフラグの設定
+ * @param  e 0x00 - ベリファイフラグをリセット 0x01 - ベリファイフラグをセット
+ */ 
+function _VERIFY(e, c = 0x2e) = BDOS;
+
+/**
+ * 論理セクタの読み出し
+ * @param  de 読み出す論理セクタの番号(複数のときはその先頭の論理セクタ番号)
+ * @param  h  読み出す論理セクタの個数
+ * @param  l  読み出すディスクのドライブ番号(A=0,B=1,H=7)
+ * @return
+ *         DTA以降の(論理セクタサイズ×論理セクタの個数)バイトに読み込んだ内容を設定
+ */ 
+function _RDABS(c = 0x2f) = BDOS;
+
+/**
+ * 論理セクタの書き込み
+ * @param  de 書き込む論理セクタの番号(複数のときはその先頭の論理セクタ番号)
+ * @param  h  書き込む論理セクタの個数
+ * @param  l  書き込むディスクのドライブ番号(A=0,B=1,H=7)
+ */ 
+function _WRABS(c = 0x30) = BDOS;

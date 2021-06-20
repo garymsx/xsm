@@ -1,0 +1,39 @@
+org 0x100;
+
+import "library/msx/msxdos.xsm";
+
+// file open
+a = _FOPEN(de = FCB1);
+if(a != 0) {
+    _STROUT(de = "File Open Error\r\n$");
+    return;
+}
+
+try {
+    //_STROUT(de = "-- start more --\r\n$");
+    // warn: The maximum file size is 65535 bytes for cutting corners.
+    de = *(FCB1 + offset(FCB.fileSize[0]));
+    while() {
+        // read file
+        using(de) {
+            a = _RDSEQ(de = FCB1);
+            if(a != 0) break;
+        }
+
+        // output console
+        hl = DTA;
+        loop(128) { // record size = 128
+            a = *hl;
+            if(a == 0x1a) break; // EOF break
+            using(bc,de,hl) _CONOUT(e = a);
+            hl++;
+            de--;
+            if(d == 0 && e == 0) break;
+        }
+    }
+} finally {
+    _FCLOSE(de = FCB1);
+    //_STROUT(de = "\r\n-- end more --\r\n$");
+}
+
+return;
