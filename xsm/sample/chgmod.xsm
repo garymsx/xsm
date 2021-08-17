@@ -15,7 +15,7 @@ const int EXPTBL = 0xFCC1;            // MAIN ROMのスロット
  * @param IX コールする番地
  * @param IY 上位8ビットにスロット番号（形式はRDSLTと同じ）
  */
-function CALSLT(IX, IY = *EXPTBL - 1) = 0x001C;
+function CALSLT(IX, IY = *(EXPTBL - 1)) = 0x001C;
 
 /**
  * 拡張BIOSをコールする(MSX Datapackより)
