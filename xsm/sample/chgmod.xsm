@@ -1,0 +1,49 @@
+// DOSコマンドからSCREEN1に切り替える
+A = 1; // 画面モード 1
+SUB_CALSLT(IX = CHGMOD);
+return;
+
+const int EXTROM = 0x015f;            // Non-maskable interrupt
+const int NMI    = 0x0066;            // Hook for NMI
+const int H_NMI  = 0xfdd6;
+const int CHGMOD = 0x00D1;            // 拡張BIOS 画面モード変更
+const int EXPTBL = 0xFCC1;            // MAIN ROMのスロット
+
+/**
+ * 他のスロットのルーチンを呼び出します（インタースロットコール）。
+ * @type MAIN
+ * @param IX コールする番地
+ * @param IY 上位8ビットにスロット番号（形式はRDSLTと同じ）
+ */
+function CALSLT(IX, IY = *EXPTBL - 1) = 0x001C;
+
+/**
+ * 拡張BIOSをコールする(MSX Datapackより)
+ * @param IX コールするアドレス
+ */
+function SUB_CALSLT(IX) {
+    exx;                     // Save argument registers over setup
+	ex AF,AF;
+	HL = EXTROM;
+	push HL;
+	HL = 0xc300;             // jp xxxx, nop
+	push HL;
+    push IX;                 // SUB ROM entry
+	HL = 0x21dd;             // ld ix,xxxx
+	push HL;
+	HL = 0x3333;             // inc sp, inc sp
+	push HL;
+	HL = 0;
+    HL += SP;
+    A = 0xc3;
+    *H_NMI = A;
+    *(H_NMI + 1) = HL;
+    ex AF,AF;               // Restore registers
+    exx;
+    CALSLT(IX = NMI);
+    ei;
+    HL = 10;                 // Throw away the interface routine
+    HL += SP;
+    SP = HL;
+    return;
+}

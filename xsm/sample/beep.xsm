@@ -1,0 +1,27 @@
+const int EXPTBL     = 0xFCC1;
+const int EXPTBL_IY  = EXPTBL - 1; // インタースロットコール用
+
+/**
+ * CALSLT
+ * 他のスロットのルーチンを呼び出します（インタースロットコール）。
+ * 
+ * @type MAIN
+ * @param IX コールする番地
+ * @param IY 上位8ビットにスロット番号（形式はRDSLTと同じ）
+ */
+function CALSLT(IX, IY = *EXPTBL_IY) = 0x001C;
+
+/**
+ * BEEP
+ * ブザーを鳴らします。
+ * @type MAIN
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline BEEP() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00C0, IY = *EXPTBL_IY);
+}
+
+BEEP();
+
+return;
+

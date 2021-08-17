@@ -1,4 +1,4 @@
-import "library/lang/divw.xsm";
+import "/lang/divw.xsm";
 
 /**
  * hlレジスタの数値を文字列に変換してdeに出力する

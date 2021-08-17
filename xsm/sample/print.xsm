@@ -1,11 +1,14 @@
 // 文字出力サブルーチン
-import "library/lang/mul.xsm";
-import "library/lang/mulw.xsm";
-import "library/lang/div.xsm";
-import "library/lang/divw.xsm";
+import "/lang/mul.xsm";
+import "/lang/mulw.xsm";
+import "/lang/div.xsm";
+import "/lang/divw.xsm";
 
 // システムコール
-function SYSTEM_CALL(c) = 0x0005;
+//const int SYSTEM_CALL = 0x0005;
+
+// システムコール 1文字出力
+function SC_PUTCH(e, c = 0x02) = 0x0005;
 
 // HLレジスタが指すアドレスの文字列をコンソールに表示
 // 終了文字は"\0"
@@ -28,7 +31,7 @@ function print(de) {
 // 1文字出力
 function putch(e) {
     using(af,bc,de,hl) {
-    	SYSTEM_CALL(0x02);
+    	SC_PUTCH(e);
     }
 }
 

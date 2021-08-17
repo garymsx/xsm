@@ -1,4 +1,4 @@
-import "library/string/strchr.xsm";
+import "/string/strchr.xsm";
 
 /*
  * 文字列連結

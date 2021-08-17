@@ -8,6 +8,7 @@
 		{"include": "#entity"},
 		{"include": "#storage"},
 		{"include": "#strings"},
+		{"include": "#functions"},
 		{"include": "#comment"}
 	],
 	"repository": {
@@ -15,7 +16,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.xsm",
-					"match": "\\b(bin|qtr|oct|hex|sizeof|length|offset|assert|if|else|while|for|loop|switch|case|default|break|continue|return|call|goto|push|pop|and|xor|or|cp|rlc|rrc|rl|rr|sla|sll|sra|srl|rld|rrd|rlca|rrca|rla|rra|bit|res|set|in|ini|inir|ind|indr|out|outi|outr|outd|outdr|ldi|ldir|cpi|cpir|cpd|cpdr|rst|nop|halt|di|ei|im|exx|ex|daa|cpl|neg|ccf|scf|clc|org|include|import|define|unsafe|using|debug|on|off|try|catch|finally|throw|move|clear|dataorg|shadoworg|db|dw|dc|repeat|error|warn|info|typename)\\b"
+					"match": "\\b(assert|if|else|while|for|loop|switch|case|default|break|continue|return|returni|returnn|call|goto|push|pop|and|xor|or|cp|rlc|rrc|rl|rr|sla|sll|sra|srl|rld|rrd|rlca|rrca|rla|rra|bit|res|set|in|ini|inir|ind|indr|out|outi|outr|outd|outdr|ldi|ldir|ldd|lddr|cpi|cpir|cpd|cpdr|rst|nop|halt|di|ei|im|exx|ex|daa|cpl|neg|ccf|scf|clc|org|package|include|import|define|unsafe|using|debug|on|off|try|catch|finally|throw|move|clear|db|dw|dc|repeat)\\b"
 				}
 			]
 		},
@@ -35,7 +36,7 @@
 			"patterns": [
 				{
 					"name": "variable.language.xsm",
-					"match": "\\b(ixh|ixl|iyh|iyl|IXH|IXL|IYH|IYL|af|bc|de|hl|AF|BC|DE|HL|ix|iy|IX|IY|sp|SP|a|b|c|d|e|h|l|it|rf|A|B|C|D|E|H|L|IT|RF)\\b|\\$(c|nc|z|nz|pe|po|m|p|C|NC|Z|NZ|PE|PO|M|P)\\b"
+					"match": "\\b(?i:ixh|ixl|iyh|iyl|af|bc|de|hl|ix|iy|sp|a|b|c|d|e|h|l|it|rf)\\b|\\$(?i:c|nc|z|nz|pe|po|m|p)\\b"
 				}
 			]
 		},
@@ -100,7 +101,19 @@
 					"patterns": [
 						{
 							"name": "constant.character.escape.xsm",
-							"match": "\\\\."
+							"match": "\\\\x\\h\\h(?=')"
+						},
+						{
+							"name": "constant.character.escape.xsm",
+							"match": "\\\\.(?=')"
+						},
+						{
+							"name": "invalid.illegal.xsm",
+							"match": "..(?=')"
+						},
+						{
+							"name": "invalid.illegal.xsm",
+							"match": "\\\\x\\h(?=')"
 						}
 					]
 				},
@@ -111,8 +124,26 @@
 				}
 			]
 		},
+		"functions": {
+			"patterns": [
+				{
+					"name": "support.function.xsm",
+					"match": "\\b(bin|qtr|oct|hex|sizeof|length|offset|debug|error|warn|info|typename)\\b"
+				}
+			]
+		},
 		"comment": {
 			"patterns": [
+				{
+					"name": "comment.block.documentation.xsm",
+					"begin": "/\\*\\*",
+					"end": "\\*/",
+					"patterns": [
+						{
+							"include": "#docblock"
+						}
+					]
+				},
 				{
 					"name": "comment.block.xsm",
 					"begin": "/\\*",
@@ -122,6 +153,14 @@
 					"name": "comment.line.double-dash.xsm",
 					"begin": "//",
 					"end": "$"
+				}
+			]
+		},
+		"docblock": {
+			"patterns": [
+				{
+					"name": "keyword.xsmdoc",
+					"match": "@\\w+\\b"
 				}
 			]
 		}

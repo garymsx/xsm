@@ -9,6 +9,10 @@
     "categories": [
         "Programming Languages"
     ],
+    "main": "./extensions/extension.js",
+    "activationEvents": [
+        "*"
+    ],
     "contributes": {
         "languages": [{
             "id": "xsm",
@@ -20,6 +24,13 @@
             "language": "xsm",
             "scopeName": "source.xsm",
             "path": "./syntaxes/xsm.tmLanguage.json"
+        }],
+        "snippets": [{
+              "language": "xsm",
+              "path": "./snippets/snippets.json"
         }]
-    }
+    },
+	"dependencies": {
+		"glob": "^7.1.6"
+	}    
 }

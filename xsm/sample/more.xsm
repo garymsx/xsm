@@ -37,3 +37,10 @@ try {
 }
 
 return;
+
+/**
+ * @param
+ */
+function test() {
+
+}

@@ -44,10 +44,10 @@ struct FCB {
     byte[4]  randomRecord;       // ランダムレコード アクセスしたいレコードを指定します(0x21、0x22、0x28参照)。
 }
 
-// _BUFINTRINGの行バッファ(サンプル)
+// _BUFINの行バッファ(サンプル)
 struct LINE_BUF {
     byte max;           // 最大サイズ bufferのサイズをセットすること
-    byte size;          // 入力された文字列
+    byte size;          // 入力された文字列のサイズ
     char[41]  buffer;   // バッファ、用途に合わせて定義しなおす (40文字+'\0'用)
 }
 
