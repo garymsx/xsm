@@ -16,7 +16,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.xsm",
-					"match": "\\b(assert|if|else|while|for|loop|switch|case|default|break|continue|return|returni|returnn|call|goto|push|pop|and|xor|or|cp|rlc|rrc|rl|rr|sla|sll|sra|srl|rld|rrd|rlca|rrca|rla|rra|bit|res|set|in|ini|inir|ind|indr|out|outi|outr|outd|outdr|ldi|ldir|ldd|lddr|cpi|cpir|cpd|cpdr|rst|nop|halt|di|ei|im|exx|ex|daa|cpl|neg|ccf|scf|clc|org|package|include|import|define|unsafe|using|debug|on|off|try|catch|finally|throw|move|clear|db|dw|dc|repeat)\\b"
+					"match": "\\b(assert|if|else|while|for|loop|switch|case|default|break|continue|return|returni|returnn|call|goto|push|pop|and|xor|or|cp|rlc|rrc|rl|rr|sla|sll|sra|srl|rld|rrd|rlca|rrca|rla|rra|bit|res|set|in|ini|inir|ind|indr|out|outi|outr|outd|outdr|ldi|ldir|ldd|lddr|cpi|cpir|cpd|cpdr|rst|nop|halt|di|ei|im|exx|ex|daa|cpl|neg|ccf|scf|clc|org|include|import|define|unsafe|using|debug|on|off|try|catch|finally|throw|move|clear|db|dw|dc|repeat)\\b"
 				}
 			]
 		},

@@ -1,0 +1,1034 @@
+import "/msx/workarea.xsm";
+
+// インタースロットコール関連
+
+/**
+ * Aレジスタの値に対応するスロットを選択し、そのスロットのメモリを1バイト読み出します。
+ * このルーチンを呼ぶと、割り込みを禁止し、実行後も割り込みは解除されません。
+ * 
+ * @type MAIN
+ * @param A スロット操作 スロット番号(bit0-3)、拡張スロット指定(bit7=1)
+ * @param HL 読み込むメモリの番地
+ * @return A 読み込んだメモリの値
+ * @using AF, BC, DE
+ */
+function RDSLT(A, HL) return A using AF, BC, DE = 0x000C;
+
+/**
+ * Aレジスタの値に対応するスロットを選択し、そのスロットのメモリに値を書き込みます。
+ * このルーチンを呼ぶと、割り込みを禁止し、実行後も割り込みは解除されません。
+ * 
+ * @type MAIN
+ * @param A スロット操作（形式はRDSLTと同じ）
+ * @param HL 書き込むメモリの番地
+ * @using AF, BC, D
+ */
+function WRSLT(A, HL) using AF, BC, D = 0x0014;
+
+/**
+ * 他のスロットのルーチンを呼び出します（インタースロットコール）。
+ * 
+ * @type MAIN
+ * @param IX コールする番地
+ * @param IY 上位8ビットにスロット番号（形式はRDSLTと同じ）
+ */
+function CALSLT(IX, IY = *(EXPTBL - 1)) = 0x001c;
+
+/**
+ * Aレジスタの値に対応するスロットを選択し、以降そのスロットを使用可能にします。
+ * このルーチンを呼ぶと、割り込みを禁止し、実行後も割り込みは解除されません。
+ * 
+ * @type MAIN
+ * @param A スロット操作（形式はRDSLTと同じ）
+ * @param HL 呼び出すアドレス
+ * @using AF, BC, DE, HL, IX, IY
+ */
+function ENASLT(A, HL) using AF, BC, DE, HL, IX, IY = 0x0024;
+
+/**
+ * 別のスロットにあるルーチンを呼び出します。
+ * 
+ * @type MAIN
+ * @using AF
+ * @sample
+ *   rst 0x30;
+ *   db  n;    nはスロット番号(形式はRDSLTと同じ)
+ *   dw  nn;   nnは呼び出すアドレス
+ */
+function CALLF() using AF = 0x0030;
+
+//--------------------------------------------------------------
+
+/**
+ * RAMをチェックし、システム用のRAMに使うスロットを選択します。
+ * このルーチンの実行後は、さらに初期化のルーチンへ分岐します。
+ * 
+ * @type MAIN
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline CHKRAM() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0000);
+}
+
+/**
+ * HLレジスタが指す文字が指定した文字かどうかを調べます。
+ * 違っていたら「Syntax error」を発生し、同じであればCHRGTR (0010/MAIN)へジャンプします。
+ * 
+ * @type MAIN
+ * @param HL チェックする文字。このルーチンを呼び出すRST命令の後に比較する文字を入れる（インラインパラメータ）。
+ * @return HL +1される
+ *         A 1つ選んだHLの指す文字
+ *         CYフラグ チェックした文字が数字であればセット
+ *         Zフラグ ステートメントの終わり（00Hまたは3AH）ならばセット
+ * @using AF, HL
+ */
+inline SYNCHR(HL) using AF, HL {
+	CALSLT(IX = 0x0008);
+}
+
+/**
+ * BASICテキストから文字（またはトークン）を取り出します。
+ * 
+ * @type MAIN
+ * @param HL 読み込む文字が入っているメモリの番地
+ * @return HL +1される
+ *         A 1つ選んだHLの指す文字
+ *         CYフラグ チェックした文字が数字であればセット
+ *         Zフラグ ステートメントの終わり（00Hまたは3AH）ならばセット
+ * @using AF, HL
+ */
+inline CHRGTR(HL) using AF, HL {
+	CALSLT(IX = 0x0010);
+}
+
+/**
+ * 現在使っているデバイスに値を出力します。
+ * 
+ * @type MAIN
+ * @param A 出力する値
+ *         PRTFLG(0xF416) 0以外であればプリンタに出力
+ *         PTRFIL(0xF864) 0以外であればPRTFILで示されるファイルへ出力
+ *        
+ */
+inline OUTDO(A) {
+	CALSLT(IX = 0x0018);
+}
+
+/**
+ * HLレジスタとDEレジスタの内容を比較します。
+ * 
+ * @type MAIN
+ * @param HL 比較する値1
+ * @param DE 比較する値2
+ * @return Zフラグ HL = DEならセット
+ *         CYフラグ HL < DEならセット
+ * @using AF
+ */
+inline DCOMPR(HL, DE) using AF {
+	CALSLT(IX = 0x0020);
+}
+
+/**
+ * DAC（デシマルアキュムレータ）の型を調べます。
+ * 
+ * @type MAIN
+ * @param なし(【VALTYP(0xF663)】にはDACの型が入っている)
+ * @return DACの型によって、S、Z、P/V、CYフラグが以下のように変化する
+ *         整数型   単精度実数型  文字型   倍精度実数型
+ *         C = 1    C = 1       C = 1    C = 0*
+ *         S = 1    S = 0       S = 0    S = 0
+ *         Z = 0    Z = 0       Z = 1*   Z = 0
+ *         P/V = 1  P/V = 0*    P/V = 1  P/V = 1
+ *         各型は、*のついたフラグを調べればチェックできる
+ * @using AF
+ */
+inline GETYPR() using AF {
+	CALSLT(IX = 0x0028);
+}
+
+/**
+ * タイマ割り込みの処理ルーチンを実行します。
+ * 
+ * @type MAIN
+ */
+inline KEYINT() {
+	CALSLT(IX = 0x0038);
+}
+
+/**
+ * デバイスを初期化します。
+ * 
+ * @type MAIN
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline INITIO() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x003B);
+}
+
+/**
+ * ファンクションキーの内容を初期化します。
+ * このルーチンを実行後、画面をクリアするとファンクションキーの表示も変わります。
+ * 
+ * @type MAIN
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline INIFNK() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x003E);
+}
+
+/**
+ * 画面表示を禁止します。
+ * 
+ * @type MAIN
+ * @using AF, BC
+ */
+inline DISSCR() using AF, BC {
+	CALSLT(IX = 0x0041);
+}
+
+/**
+ * 画面を表示します。
+ * 
+ * @type MAIN
+ * @using AF, BC
+ */
+inline ENASCR() using AF, BC {
+	CALSLT(IX = 0x0044);
+}
+
+/**
+ * VDPのレジスタに値を書き込みます。
+ * 
+ * @type MAIN/MSX2
+ * @param C VDPのレジスタ番号（レジスタ番号は0～23、32～46）
+ * @param B 書き込む値
+ * @using AF, BC
+ */
+inline WRTVDP(C, B) using AF, BC {
+	CALSLT(IX = 0x0047);
+}
+
+/**
+ * VRAMの指定したアドレスの内容を読み出します。
+ * ただし、このルーチンはTMS9918(MSX1のVDP)に対するもので、VRAMのアドレスは下位14ビットのみが有効です。
+ * 全ビットを使うときは、NRDVRM(0174H/MAIN)を使います。
+ * 
+ * @type MAIN
+ * @param HL VRAMのアドレス
+ * @return A 読み出した値
+ * @using AF
+ */
+inline RDVRM(HL) return A using AF {
+	CALSLT(IX = 0x004A);
+}
+
+/**
+ * VRAMにデータを書き込みます。
+ * ただし、このルーチンはTMS9918に対するもので、VRAMのアドレスは下位14ビットのみが有効です。
+ * 全ビットを使うときは、NVRVRM(0177H/MAIN)を使います。
+ * 
+ * @type MAIN
+ * @param HL VRAMのアドレス
+ * @param A 書き込む値
+ * @using AF
+ */
+inline WRTVRM(HL, A) using AF {
+	CALSLT(IX = 0x004D);
+}
+
+/**
+ * VDPにVRAMアドレスをセットして、読み出せる状態にします。
+ * このルーチンはVDPのアドレスオートインクリメントの機能を使って、連続したVRAM領域からデータを読み出すときに使います。
+ * このルーチンの実行後はポートから直接VRAMから読み出します。
+ * したがって、RDVRMをループ中で使うより高速な読み出しができます。
+ * ただし、このルーチンはTMS9918に対するもので、VRAMのアドレスは下位14ビットのみが有効です。
+ * 全ビットを使うときは、NSETRD(016EH/MAIN)を使います。
+ * 
+ * @type MAIN
+ * @param HL VRAMアドレス
+ * @using AF
+ */
+inline SETRD(HL) using AF {
+	CALSLT(IX = 0x0050);
+}
+
+/**
+ * VDPにVRAMアドレスをセットして、書き込める状態にします。
+ * 使用目的はSETRDと同じです。
+ * ただし、このルーチンはTMS9918に対するもので、VRAMのアドレスは下位14ビットのみが有効です。
+ * 全ビットを使うときは、NSTWRT(0171H/MAIN)を使います。
+ * 
+ * @type MAIN
+ * @param HL VRAMアドレス
+ * @using AF
+ */
+inline SETWRT(HL) using AF {
+	CALSLT(IX = 0x0053);
+}
+
+/**
+ * VRAMの指定用猟奇を同一のデータで埋めます。
+ * ただし、このルーチンはTMS9918に対するもので、VRAMのアドレスは下位14ビットのみが有効です。
+ * 全ビットを使うときは、BIGFIL(016BH/MAIN)を使います。
+ * 
+ * @type MAIN/MSX2
+ * @param HL 書き込みを開始するVRAMアドレス
+ * @param BC 書き込む領域の長さ(バイト数)
+ * @param A 書き込む値
+ * @using AF, BC
+ */
+inline FILVRM(HL, BC, A) using AF, BC {
+	CALSLT(IX = 0x0056);
+}
+
+/**
+ * VRAMからメモリへデータをブロック転送します。
+ * 
+ * @type MAIN/MSX2
+ * @param HL 転送元のVRAMアドレス(指定するVRAMあどれすは全ビットが有効)
+ * @param DE 転送先のRAMアドレス
+ * @param BC 転送する長さ(バイト数)
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline LDIRMV(HL, DE, BC) using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0059);
+}
+
+/**
+ * スクリーンモードを変えます。
+ * パレットは初期化しません。
+ * パレットの初期化が必要なときは、CHGMDP(00D1H/SUB)を使います。
+ * 
+ * @type MAIN/MSX2
+ * @param A スクリーンモード(0～8)
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline CHGMOD(A) using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x005C);
+}
+
+/**
+ * 画面の色を変えます。
+ * @type MAIN
+ * @param 【FORCLR(0xF3E9)】前景色
+ * @param 【BAKCLR(0xF3EA)】背景色
+ * @param 【BDRCLR(0xF3EB)】周辺色
+ * @using AF, BC, DE, HL, IX, IY
+ *
+ */
+inline CHGCLR() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0062);
+}
+
+/**
+ * NMI (Non Maskable Interrupt)処理ルーチンを実行します。
+ * @type MAIN
+ */
+inline NMI() {
+	CALSLT(IX = 0x0066);
+}
+
+/**
+ * すべてのスプライトを次のように初期化します。
+ *     スプライトパターン                     ヌル
+ *     スプライト番号                         スプライト面番号
+ *     スプライトカラー                       前景色
+ *     スプライトの垂直位置(SCREEN 0～3)       209
+ *     スプライトの垂直位置(SCREEN 4～12)      217
+ * @type MAIN/MSX2
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline CLRSPR() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0069);
+}
+
+/**
+ * 画面をTEXTlモード(SCREEN0、40x 24)に初期化します。
+ * このルーチンはパレットを初期化しません。
+ * パレットの初期化が必要であれば、このルーチンを実行した後、INIPLT(0x0141/SUB)を実行します。
+ * @type MAIN/MSX2
+ * @param 【TXTNAM(0xF3B3)】パターンネームテーブルのアドレス
+ * @param 【TXTCGP(0xF3B7)】パターンジェネレータテーブルのアドレス
+ * @param 【LINL40(0xF3AE)】1行の幅(WIDTH文によって設定する値)
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline INITXT() {
+	CALSLT(IX = 0x006C);
+}
+
+/**
+ * 画面をTEXT2モード(SCREEN1、32x24)に初期化します。
+ * このルーチンはパレットを初期化しません。
+ * パレットの初期化が必要であれば、このルーチンを実行した後、INIPLT(0x0141/SUB)を実行します。
+ * @type MAIN/MSX2
+ * @param 【T32NAM(0xF3BD)】パターンネームテーブルのアドレス
+ * @param 【T32COL(0xF3BF)】カラーテーブルのアドレス
+ * @param 【T32CGP(0xF3C1)】パターンジェネレータテーブルのアドレス
+ * @param 【T32ATR(0xF3C3)】スプライトアトリビュートテーブルのアドレス
+ * @param 【T32PAT(0xF3C5)】スプライトジェネレータテーブルのアドレス
+ * @param 【LINL32(0xF3AF)】l行の幅(WIDTH文によって設定する値
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline INIT32() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x006F);
+}
+
+/**
+ * 画面をGRAPHIClモード(SCREEN2)に初期化します。
+ * このルーチンはパレットを初期化しません。
+ * パレットの初期化が必要であれば、このルーチンを実行した後、INIPLT(0x0141/SUB)を実行します。
+ * @type MAIN/MSX2
+ * @param 【GRPNAM(0xF3C7)】パターンネームテーブルのアドレス
+ * @param 【GRPCOL(0xF3C9)】カラーテーブルのアドレス
+ * @param 【GRPCGP(0xF3CB)】パターンジェネレータテーブルのアドレス
+ * @param 【GRPATR(0xF3CD)】スプライトアトリビュートテーブルのアドレス
+ * @param 【GRPPAT(0xF3CF)】スプライトジェネレータテーブルのアドレス
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline INIGRP() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0072);
+}
+
+/**
+ * 画面をMULTICOLORモード(SCREEN3)に初期化します。
+ * このルーチンはパレットを初期化しません。
+ * パレットの初期化が必要であれば、このルーチンを実行した後、INIPLT(0x0141/SUB)を実行します。
+ * @type MAIN/MSX2
+ * @param 【MLTNAM(0xF3D1)】パターンネームテーブルのアドレス
+ * @param 【MLTCOL(0xF3D3)】カラーテーブルのアドレス
+ * @param 【MLTCGP(0xF3D5)】パターンジェネレータテーブルのアドレス
+ * @param 【MLTATR(0xF3D7)】スプライトアトリビュートテーブルのアドレス
+ * @param 【MLTPAT(0xF3D9)】スプライトジェネレータテーブルのアドレス 
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline INIMLT() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0075);
+}
+
+/**
+ * VDPのみをTEXT1モード(SCREEN0、40x 24)にします。
+ * @type MAIN/MSX2
+ * @param INITXTと同じ
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline SETTXT() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0078);
+}
+
+/**
+ * VDPのみをTEXT2モード(SCREEN1、32x24) にします。
+ * @type MAIN/MSX2
+ * @param INIT32と同じ
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline SETT32() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x007B);
+}
+
+/**
+ * VDPのみをGRAPHIC1モード(SCREEN2) にします。
+ * @type MAIN/MSX2
+ * @param INIGRPと同じ
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline SETGRP() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x007E);
+}
+
+/**
+ * VDPのみをMULTI COLORモード(SCREEN3) にします。
+ * @type MAIN/MSX2
+ * @param INIMLTと同じ
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline SETMLT() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0081);
+}
+
+/**
+ * スプライトジェネレータテーブルの開始アドレスを獲得します。
+ * @type MAIN
+ * @param  A  スプライト番号
+ * @return HL アドレス
+ * @using AF, DE, HL
+ */
+inline CALPAT(A) return HL using AF, DE, HL{
+	CALSLT(IX = 0x0084);
+}
+
+/**
+ * スプライトアトリビュートテーブルの開始アドレスを獲得します。
+ * @type MAIN
+ * @param  A  スプライト番号
+ * @return HL アドレス
+ * @using AF, DE, HL
+ */
+inline CALATR(A) return HL using AF, DE, HL {
+	CALSLT(IX = 0x0087);
+}
+
+/**
+ * 現在のスプライトサイズを獲得します。
+ * @type MAIN
+ * @return A スプライトサイズ(バイト数)
+ *         CYフラグ 16x16のサイズの場合のみセットし、それ以外のときはリセット
+ */
+inline GSPSIZ() return A {
+	CALSLT(IX = 0x008A);
+}
+
+/**
+ * グラフィック画面に文字を表示します。
+ * @type MAIN/MSX2
+ * @param A キャラクタコード
+ * @param 【LOGOPR(0xFB02)] スクリーンモードが5～12ならロジカルオペレーションコード
+ */
+inline GRPPRT(A) {
+	CALSLT(IX = 0x008D);
+}
+
+/**
+ * PSGを初期化し、PLAY文のための初期値を設定します。
+ * @type MAIN
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline GICINI() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0090);
+}
+
+/**
+ * PSGのレジスタにデータを書き込みます。
+ * @type MAIN
+ * @param A PSGのレジスタ番号
+ * @param E 書き込むデータ
+ */
+inline WRTPSG(A,E) {
+	CALSLT(IX = 0x0093);
+}
+
+/**
+ * PSGレジスタの値を読み出します。
+ * @type MAIN
+ * @param A PSGのレジスタ番号
+ * @return A 読みだした値
+ */
+inline RDPSG(A) return A {
+	CALSLT(IX = 0x0096);
+}
+
+/**
+ * バックグラウンドタスクとして、PLAY文が実行中であるかどうかをチェックして、実行中でなければ音楽の演奏を始めます。
+ * @type MAIN
+ * @param 【QUEUE(F3F3H)】の示すアドレスに、中間言語に変換されたMMLデータをセット(「第2部6.1PLAY文BIOS」参照)
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline STRTMS() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0099);
+}
+
+/**
+ * キーボードパッファの状態を調べます。
+ * @type MAIN
+ * @return Zフラグ バッファが空であればセット、そうでなければリセット
+ * @using AF
+ */
+inline CHSNS() using AF {
+	CALSLT(IX = 0x009C);
+}
+
+/**
+ * 文字を1文字入力(入力待ちあり)します。
+ * @type MAIN
+ * @return A 入力されたコード
+ */
+inline CHGET() return A using AF {
+	CALSLT(IX = 0x009F);
+}
+
+/**
+ * 文字をl文字表示します。
+ * @type MAIN
+ * @param A 出力する文字コード
+ */
+inline CHPUT(A) {
+	CALSLT(IX = 0x00A2);
+}
+
+/**
+ * プリンタに1文字出力します。
+ * @type MAIN
+ * @param A 出力する文字コード
+ * @return CYフラグ 失敗したときセット
+ */
+inline LPTOUT(A) {
+	CALSLT(IX = 0x00A5);
+}
+
+/**
+ * プリンタの状態をチェックします。
+ * @type MAIN
+ * @param A 255 ZフラグがリセットされていればプリンタはREADY
+ *          0   ZフラグがセットされていればプリンタはNOT READY
+ * @using AF
+ */
+inline LPTSTT() using AF {
+	CALSLT(IX = 0x00A8);
+}
+
+/**
+ * グラフィックヘッダバイトかどうかをチェックします。
+ * @type MAIN
+ * @param A チェックする文字コード
+ * @return CYフラグがリセット                   グラフィックヘッダではない
+ *         CYフラグとZフラグがセット            グラフィックキャラクタコードである(A レジスタには変換後のコードが入る)
+ *         CYフラグがセット、Zフラグがリセット  グラフィックキャラクタではない(A レジスタには渡したコードがそのまま残る)
+ * @using AF
+ */
+inline CNVCHR(A) using AF {
+	CALSLT(IX = 0x00AB);
+}
+
+/**
+ * リターンキーやSTOPキーがタイプされるまで、入力された文字コードをバッファに格納します。
+ * @type MAIN
+ * @return HL バッファの先頭アドレス-1
+ *         CYフラグ STOPキーで終了したときのみセット
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline PINLIN() return HL using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00AE);
+}
+
+/**
+ * 【AUTFLG(0xF6AA)】がセットされる以外はPINLINと同じ。
+ * @type MAIN
+ * @return HL バッファの先頭アドレス-1
+ *         CYフラグ STOPキーで終了したときのみセット
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline INLIN() return HL using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00B1);
+}
+
+/**
+ * 「?」とスペース1個を表示して、INLINを実行します。
+ * @type MAIN
+ * @return HL バッファの先頭アドレス-1
+ *         CYフラグ STOPキーで終了したときのみセット
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline QINLIN() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00B4);
+}
+
+/**
+ * CTRL+STOPキーを押しているかどうかをチェックします。
+ * このルーチンは割り込みが禁止された状態でコールして下さい。
+ * @type MAIN
+ * @return CYフラグ 押されていればセット
+ * @using AF
+ */
+inline BREAKX() using AF {
+	CALSLT(IX = 0x00B7);
+}
+
+/**
+ * ブザーを鳴らします。
+ * @type MAIN
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline BEEP() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00C0);
+}
+
+/**
+ * 画面をクリアします。
+ * @type MAIN
+ * @using AF,BC,DE
+ */
+inline CLS() using AF,BC,DE {
+	CALSLT(IX = 0x00C3);
+}
+
+/**
+ * カーソルを移動します。
+ * @type MAIN
+ * @param H カーソルのX座標
+ * @param L カーソルのY座標
+ * @using AF
+ */
+inline POSIT() using AF {
+	CALSLT(IX = 0x00C6);
+}
+
+/**
+ * ファンクションキーの表示がアクティブかどうかをチェックし、
+ * アクティブなら表示し、そうでなければ消します。
+ * @type MAIN
+ * @param 【FNKFLG(0xFBCE)】  TODO:説明不足
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline FNKSB() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00C9);
+}
+
+/**
+ * ファンクションキーの表示を消します。
+ * @type MAIN
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline ERAFNK() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00CC);
+}
+
+/**
+ * ファンクションキーを表示します。
+ * @type MAIN
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline DSPFNK() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00CF);
+}
+
+/**
+ * 画面を強制的にテキストモードにします。
+ * @type MAIN
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline TOTEXT() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00D2);
+}
+
+/**
+ * ジョイスティックまたはカーソルキーの状態を調べます。
+ * @type MAIN
+ * @param A 調べるジョイスティックの番号(0=カーソルキー、1～2=ジョイスティック)
+ * @return A ジョイスティックまたはカーソルキーの押された方向
+ *           0=どの方向にも向いていない
+ *           1 =上、2=右上、3=右、4=右下
+ *           5 =下、6=左下、7=左、8=左上
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline GTSTCK(A) return A using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00D5);
+}
+
+/**
+ * トリガボタンの状態を調べます。
+ * @type MAIN
+ * @param A 調べるトリガボタンの番号(0=カーソルキー、1～2=ジョイスティック)
+ * @return A 0 トリガボタンは押されていない
+ *           FFH トリガボタンは押されている
+ * @using AF
+ */
+inline GTTRIG(A) using AF {
+	CALSLT(IX = 0x00D8);
+}
+
+/**
+ * 各種入出力装置の状態を調べます。
+ * @type MAIN
+ * @param A 調べる入出力装置の番号
+ *          0～3   タッチパネル1
+ *          4～7   タッチパネル2
+ *          8～11  ライトペン
+ *          12～15 マウス1またはトラックボール1
+ *          16～19 マウス2またはトラックボール2
+ * @return A
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline GTPAD(A) return A using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00DB);
+}
+
+/**
+ * パドルの状態を調べます。
+ * @type MAIN
+ * @param A パドルの番号(1～12)
+ * @return A パドルの回転角(0～255)
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline GTPDL(A) return A using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00DE);
+}
+
+/**
+ * カセットレコードーのモーターを動かし、テープのヘッダブロップを読み出します。
+ * @type MAIN
+ * @return CYフラグ 失敗したらセット
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline TAPION() using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00E1);
+}
+
+/**
+ * テープからデータを読み出します。
+ * @type MAIN
+ * @return  A         読み込んだ値
+ *          CYフラグ  失敗したらセット
+ */
+inline TAPIN() return A {
+	CALSLT(IX = 0x00E4);
+}
+
+/**
+ * テープからの読み込みを停止します。
+ * @type MAIN
+ * @return A 読み込んだ値
+ */
+inline TAPIOF() return A {
+	CALSLT(IX = 0x00E7);
+}
+
+/**
+ * カセットレコーダーのモーターを動かし、テープのヘッダブロックを書き込みます。
+ * @type MAIN
+ * @param A 0     ショートヘッダ
+ *          0以外 ロングヘッダ
+ * @return CYフラグ 失敗したらセット
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline TAPOON(A) using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00EA);
+}
+
+/**
+ * テープにデータを書き込みます。
+ * @type MAIN
+ * @param A データ
+ * @return CYフラグ 失敗したらセット
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline TAPOUT(A) using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x00ED);
+}
+
+/**
+ * テープへの密き込みを停止します。
+ * @type MAIN
+ */
+inline TAPOOF() {
+	CALSLT(IX = 0x00F0);
+}
+
+/**
+ * カセットレコーダーのモーターの動作を設定します。
+ * @type MAIN
+ * @param A 0 ストップ
+ *          1 スタート
+ *          0xff 現在と逆の動作にする
+ * @using AF
+ */
+inline STMOTR(A) using AF {
+	CALSLT(IX = 0x00F3);
+}
+
+/**
+ * CAPSランプの状態を変えます。
+ * @type MAIN
+ * @param A 0     ランプをつける
+ *          0以外 ランプを消す
+ * @using AF
+ */
+inline CHGCAP(A) using AF {
+	CALSLT(IX = 0x0132);
+}
+
+/**
+ * 1ビットサウンドポートの状態を変えます。
+ * @type MAIN
+ * @param A 0     サウンドポートのビットをOFF
+ *          0以外 サウンドポートのビットをON
+ * @using AF
+ */
+inline CHGSND(A) using AF {
+	CALSLT(IX = 0x0135);
+}
+
+/**
+ * 基本スロット選択レジスタに出力している内容を読み出します。
+ * @type MAIN
+ * @return A 読み込んだ値
+ * @using A
+ */
+inline RSLREG() using A {
+	CALSLT(IX = 0x0138);
+}
+
+/**
+ * 基本スロット選択レジスタにデータを書き出します。
+ * @type MAIN
+ * @param A 書き込む値
+ */
+inline WSLREG(A) {
+	CALSLT(IX = 0x013B);
+}
+
+/**
+ * VDPのステータスレジスタを読み出します。このルーチンはTMS9918に対するものです。
+ * @type MAIN
+ * @return A
+ * @using A
+ */
+inline RDVDP() return A using A {
+	CALSLT(IX = 0x013E);
+}
+
+/**
+ * キーボードマトリックスから指定した行の値を読み出します。
+ * @type MAIN
+ * @param A 指定する行
+ * @return A データ(押されているキーに対応するビットが0になる)
+ * @using AF,C
+ */
+inline SNSMAT(A) using AF,C {
+	CALSLT(IX = 0x0141);
+}
+
+/**
+ * デバイスが動作中かどうかチェックします。
+ * @type MAIN
+ * @return A 0     動作中
+ *           0以外 動作中ではない
+ * @using AF
+ */
+inline ISFLIO() using AF {
+	CALSLT(IX = 0x014A);
+}
+
+/**
+ * 文字を1文字プリンタに出力します。LPTOUT(OOA5H)とは以下の点で異なります。
+ *   1. TABはスペースに展開される。
+ *   2. MSX仕様でないプリンタに対しては、ひらがなをカタカナに、グラフィック文字を1バイト文字に変換する。
+ *   3. 失敗したときは、「device I/O error」になる。
+ * @type MAIN
+ * @param A データ
+ */
+inline OUTDLP(A) {
+	CALSLT(IX = 0x014D);
+}
+
+/**
+ * キーボードバッファをクリアします。
+ * @type MAIN
+ * @using HL
+ */
+inline KILBUF() using HL {
+	CALSLT(IX = 0x0156);
+}
+
+/**
+ * BASICインタープリタ内のルーチンをインタースロットコールします。
+ * @type MAIN
+ * @param IX 呼び出すアドレス
+ */
+inline CALBAS(IX) {
+	CALSLT(IX = 0x0159);
+}
+
+/**
+ * SUB ROMをインタースロットコールします。
+ * @type MAIN/MSX2
+ * @param IX 呼び出すアドレス。同時にIXレジスタをスタックに積む
+ */
+inline SUBROM(IX) {
+	CALSLT(IX = 0x015C);
+}
+
+/**
+ * SUB ROMをインタースロットコールします。IXレジスタはスタックに積みません。
+ * @type MAIN/MSX2
+ * @param IX 呼び出すアドレス。
+ */
+inline EXTROM(IX) {
+	CALSLT(IX = 0x015F);
+}
+
+/**
+ * 行の終わりまで削除します。
+ * @type MAIN/MSX2
+ * @param H X座標
+ * @param L Y座標
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EOL(H,L) using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x0168);
+}
+
+/**
+ * 機能的にはFILVRM(0056H/MAIN)と同じです。
+ * 以下の点がFILVRMと異なります。
+ * FILVRMでは、スクリーンモードが0～3であるかをチェックし、もしそうなら
+ * VDPは16KバイトのVRAMしか持っていないものとして扱います。
+ * しかし、BIGFILはスクリーンモードのチェックを行わず、与えられたパラメータどおりに動作します。
+ * @type MAIN/MSX2
+ * @param HL 書き込みを開始するVRAMアドレス
+ * @param BC 書き込む領域の長さ(バイト数)
+ * @param A  書き込む値
+ * @using AF, BC
+ */
+inline BIGFIL(HL,BC,A) using AF, BC {
+	CALSLT(IX = 0x016B);
+}
+
+/**
+ * VDPにアドレスをセットして、VRAMの内容が読める状態にします。
+ * @type MAIN/MSX2
+ * @param HL VRAMのアドレス
+ * @using AF
+ */
+inline NSETRD(HL) using AF {
+	CALSLT(IX = 0x016E);
+}
+
+/**
+ * VDPにアドレスを設定して、VRAMに書き込める状態にします。
+ * @type MAIN/MSX2
+ * @param HL VRAMのアドレス
+ * @using AF
+ */
+inline NSTWRT(HL) using AF {
+	CALSLT(IX = 0x0171);
+}
+
+/**
+ * VRAMの内容を読み出します。
+ * @type MAIN/MSX2
+ * @param HL 読み出すVRAMのアドレス
+ * @return A 読み出した値
+ */
+inline NRDVRM(HL) return A {
+	CALSLT(IX = 0x0174);
+}
+
+/**
+ * VRAMにデータを書き込みます。
+ * @type MAIN
+ * @param HL 書き込むVRAMのアドレス
+ * @param A  書き込む込む値
+ * @using AF
+ */
+inline NWRVRM(HL, A) using AF {
+	CALSLT(IX = 0x0177);
+}
+
+/**
+ * RESETポートの内容を読みだします。
+ * @type MAIN
+ * @return A MSBが0ならばハードでぅあリセット
+ */
+inline RDRES() {
+	CALSLT(IX = 0x017A);
+}
+
+/**
+ * RESETポートに値を書き込みます。ハードウェアリセットをシミュレートするときは、
+ * AレジスタのMSBを0にして、このBIOSをコールした後、BIOSのO番地にジャンプします。
+ * @type MAIN
+ * @param A 書き込む値
+ * @using A
+ */
+inline WRRES(A) using A {
+	CALSLT(IX = 0x017D);
+}

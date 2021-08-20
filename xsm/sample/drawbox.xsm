@@ -1,0 +1,26 @@
+import "/msx/workarea.xsm";
+import "/msx/bios.xsm";
+import "/msx/extbios.xsm";
+
+// SCREEN 5
+EXT_CHGMDP(A = 5);
+
+// DRAW FILL BOX
+unsafe {
+    GXPOS  = 160;
+    GYPOS  = 128;
+    ATRBYT = 15;
+    LOGOPR = 0;
+    EXT_NVBXFL(BC = 96,DE = 64);
+}
+
+// BEEP
+BEEP();
+
+// WAIT KEY INPUT
+CHGET();
+
+// SCREEN 0
+EXT_CHGMDP(A = 0);
+
+return;

@@ -98,12 +98,35 @@ module.exports = class XsmStatement {
     skipArray() {
         // 配列定義が続く限りループ
         let nest = 0;
+        // 多次元配列対応の為、whileが2重になっている
         while(this.value() != null && this.value() == "[") {
             while(this.value() != null) {
                 if(this.value() == "[") nest++;
                 if(this.value() == "]") nest--;
                 this.next();
                 if(nest == 0) break;
+            }
+        }
+    }
+
+    // ブロックを読み飛ばす
+    skipBlock() {
+        let nest = 0;
+        let startChar = this.value();
+        let endChar = "";
+
+        if(startChar == "(" || startChar == "{" || startChar == "[") {
+            if(startChar == "(") endChar =")";
+            if(startChar == "{") endChar ="}";
+            if(startChar == "[") endChar ="]";
+
+            while(this.value() != null && this.value() == startChar) {
+                while(this.value() != null) {
+                    if(this.value() == startChar) nest++;
+                    if(this.value() == endChar) nest--;
+                    this.next();
+                    if(nest == 0) break;
+                }
             }
         }
     }
@@ -169,4 +192,23 @@ module.exports = class XsmStatement {
         return buf.join("").trim();
     }
 
+    /**
+     * 関数名っぽいところを取り出す
+     */
+    getFunctionName() {
+        // 単語 + "(" という構成を探す
+        this.reset();
+        while(this.current() != null) {
+            this.skipBlock();
+            if(this.current() != null) {
+                const token = this.next();
+                if(token.value.match(XsmConsts.PARSE_WORD)) {
+                    if(this.current() != null && this.current().value == "(") {
+                        return token.value;
+                    }
+                }
+            }
+        }
+        return null;
+    }
 }

@@ -18,38 +18,33 @@ module.exports = class XsmSignatureHelpProvider {
 
         // カーソル位置にある一番近いステートメントを探す
         const parser = new XsmParser();
-        let nearStatement = null;
-        let nearIndex = 0;
 
-        return parser.parse(document.uri).then(() => {
-            let index = 0;
-            for(let statement of parser.statements) {
-                index = 0;
-                for(let token of statement.tokens) {
-                    if(token.lineNo == position.line && token.end < position.character) {
-                        nearStatement = statement;
-                        nearIndex = index;
-                    } else if(token.lineNo > position.line) {
-                        break;
+        return this.analyzer.analyze(document.uri).then(() => {
+            try {
+                const nearStatement = this.analyzer.searchStatement(path, position.character, position.line);
+                // 一番近いやつ
+                if(nearStatement != null) {
+                    const functionName = nearStatement.getFunctionName();
+                    if(functionName != null) {
+                        const func = this.analyzer.searchFunction(path, functionName);
+                            const signatureHelp = new vscode.SignatureHelp();
+                            signatureHelp.activeParameter = 0;
+                            signatureHelp.activeSignature = 0;
+                            let doc = [];
+                            if(func.description != null) doc.push(func.description);
+                            if(func.documentation != null) doc.push(func.documentation);
+
+                            signatureHelp.signatures = [
+                                new vscode.SignatureInformation(func.detail, doc.join("  \n"))
+                            ];
+                            return Promise.resolve(signatureHelp);
                     }
-                    index++;
                 }
-            }
-            // 一番近いやつ
-            if(nearStatement != null) {
-                const func = this.analyzer.searchFunction(path, nearStatement.tokens[nearIndex - 1].value);
-                const signatureHelp = new vscode.SignatureHelp();
-                signatureHelp.activeParameter = 0;
-                signatureHelp.activeSignature = 0;
-                signatureHelp.signatures = [
-                    new vscode.SignatureInformation(
-                        func.description || "", 
-                        (func.documentation != null ? "  \n" + func.documentation : "")
-                    )
-                ];
-                return Promise.resolve(signatureHelp);
+            } catch(e) {
+                console.log(e);
             }
             return vscode.reject('no open parenthesis before cursor')
+
         });
 
     }

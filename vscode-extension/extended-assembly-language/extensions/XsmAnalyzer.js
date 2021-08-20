@@ -203,8 +203,9 @@ module.exports = class XsmAnalyzer {
 
             // 変数、定数
             if(struct == null && (
-               topToken.match(XsmConsts.MATCH_CONST) ||
-               topToken.match(XsmConsts.MATCH_VARLIABLE) ||
+                topToken.match(XsmConsts.MATCH_CONST) ||
+                topToken.match(XsmConsts.MATCH_SHADOW) ||
+                topToken.match(XsmConsts.MATCH_VARLIABLE) ||
                this.searchStruct(path, topToken) != null)) {
                const member = this.parseMember(parser, statement, path);
                 if(member != null) {
@@ -295,6 +296,12 @@ module.exports = class XsmAnalyzer {
         // constを空読み
         if(statement.value().match(XsmConsts.MATCH_CONST)) statement.next();
 
+        // shadowを空読み
+        if(statement.value().match(XsmConsts.MATCH_SHADOW)) {
+            statement.next();
+            statement.skipBlock();
+        }
+
         let member = new XsmMember();
         member.kind = XsmConsts.MEMBER_KIND_VARIABLE;
         member.path = path;
@@ -333,6 +340,7 @@ module.exports = class XsmAnalyzer {
 
         // コメント記号を削除
         comment = comment.replace(/^(\/\*\*+|^\s*\*+\/|^\s*\*+)/mg, "")   // コメント開始、終了文字を削除
+        comment = comment.trim("\n");
         // コメントをparse
         comment.split(/\n/mg).forEach(value => {
             // 最初の@～が出てきたら説明文終了と見なす
@@ -340,20 +348,21 @@ module.exports = class XsmAnalyzer {
                 if(member.description == null) {
                     member.description = buf.join("  \n");
                     buf.splice(0);
-                } else {
-                    buf.push("  "); // 改行になる
                 }
             }
             // 説明が見やすいように編集
-            if(value.match(/\s*@(param|return|using)/)) {
-                value = value.replace(/\s*(@\w+)\s+(\w+)/,"&nbsp;$1&nbsp;&nbsp;$2&nbsp;&nbsp;-&nbsp;");
+            if(value.match(/\s*@(param)/)) {
+                value = value.replace(/\s*(@\w+)\s+(\w+)/," $1  $2  - ");
             }
-            value = value.replace(/\s/g,"&nbsp;");
+            if(value.match(/\s*@(type|return|using)/)) {
+                value = value.replace(/\s*(@\w+)\s+/, " $1  ");
+            }
+            //value = value.replace(/\s/g,"&nbsp;");
             buf.push(value);
         });
         if(member.description == null) {
             // 関数概要
-            member.description = buf.join("  \n");
+            member.description = buf.join("  \n").trim("\n");
         } else {
             // パラメータ説明
             member.documentation = buf.join("  \n");

@@ -1,0 +1,561 @@
+// MSX Datapackや以下のWebサイトを参考にさせていただいてます。
+// http://ngs.no.coocan.jp/doc/wiki.cgi/TechHan?page=FrontPage
+// http://ngs.no.coocan.jp/doc/wiki.cgi/datapack
+// https://msxjpn.jimdofree.com/
+
+// MAIN-ROM システム変数
+shadow(0x0002) byte         LOGOBOT;
+shadow(0x0004) int          CGTABL;          // ROM にある MSX キャラクターセットの基本番地 
+shadow(0x0006) byte         VDP_DR;          // VDP 読み込み時 ポート 0 のアドレス
+shadow(0x0007) byte         VDP_DW;          // VDP 書き込み時 ポート 0 のアドレス
+shadow(0x002B) byte         SYSINF1;         // キャラクターセット・日時フォーマット・ビデオ信号の種別
+                                             // bit 0～3 キャラクターセット 0000=日本 0001=世界 010=韓国
+                                             // bit 4～6 日時フォーマット   000=Y-M-D 001=M-D-Y 010=D-M-Y
+                                             // bit 7    ビデオ信号 0=60MHz 1=50MHz
+shadow(0x002C) byte         SYSINF2;         // キーボード・ BASIC の種別
+                                             // bit 0～3 キーボードの種類
+                                             // 0000=日本     0001=世界   0010=フランス AZERTY
+                                             // 0011=イギリス 0100=ドイツ(DIN)
+                                             // bit 4～6 BASIC の種別 0000=日本語 0001=世界
+shadow(0x002D) byte         MSXVER;          // MSXのバージョン 0=MSX1 1=MSX2 2=MSX2+ 3=MSX turbo R
+shadow(0x002E) byte         MIDINF;          // MSX-MIDI
+                                             // bit 0 MSX-MIDI 0=存在しない 1=存在する (MSX turbo R のみ有効)
+shadow(0x0034) byte[4]      KNJBS1;          // 漢字BASIC用 BASIC起動時に KNJBS2へコピーされます。
+
+shadow(0xF30F) byte[4]      KNJBS2;          // 漢字BASIC用 BASIC起動時に KNJBS1からコピーされます。
+
+
+// Disk BASIC 関連
+// ディスクがある場合に有効です。
+shadow(0xF323) int          DISKVE;          // ディスクエラー処理ルーチンの番地
+shadow(0xF325) int          BREAKV;          // CTRL+C 処置ルーチンの番地
+shadow(0xF341) byte         RAMAD0;          // ページ 0 RAM スロットアドレス
+shadow(0xF342) byte         RAMAD1;          // ページ 1 RAM スロットアドレス
+shadow(0xF343) byte         RAMAD2;          // ページ 2 RAM スロットアドレス
+shadow(0xF344) byte         RAMAD3;          // ページ 3 RAM スロットアドレス
+shadow(0xF348) byte         MASTERS;         // マスターカートリッジ スロットアドレス
+
+
+// スロット間読み・書き・呼び出しサブルーチン
+shadow(0xF380) byte[5]      RDPRIM;          // 基本スロットからの読み込み
+shadow(0xF385) byte[7]      WRPRIM;          // 基本スロットへ書き込み
+shadow(0xF38C) byte[14]     CLPRIM;          // 基本スロットコール
+
+
+// USR マシン語プログラム開始アドレス
+shadow(0xF39A) int[10]      USRTAB;          // USR関数(0-9)のマシン語プログラムの開始番地。
+                                             // 定義前はエラールーチン(FCERR)を指す
+
+// テキスト画面
+shadow(0xF3AE) byte         LINL40;          // SCREEN 0 の WIDTH
+shadow(0xF3AF) byte         LINL32;          // SCREEN 1 の WIDTH
+shadow(0xF3B0) byte         LINLEN;          // 現在画面の横幅（WIDTH で設定）
+shadow(0xF3B1) byte         CRTCNT;          // 現在画面の縦幅
+shadow(0xF3B2) byte         CLMLST;          // PRINT文の制御に使用、LINLEN-(LINLEN MOD 14) - 14
+
+
+// SCREEN 0 の初期化
+shadow(0xF3B3) int          TXTNAM;          // SCREEN 0 パターンネームテーブル（BASE(0)）
+                                             // 初期値 0000H
+shadow(0xF3B5) int          TXTCOL;          // 未使用（BASE(1)）
+shadow(0xF3B7) int          TXTCGP;          // SCREEN 0 パターンジェネレータテーブル（BASE(2)）
+                                             // 初期値 0800H
+shadow(0xF3B9) int          TXTATR;          // 未使用（BASE(3)）
+shadow(0xF3BB) int          TXTPAT;          // 未使用（BASE(4)）
+
+
+// SCREEN 1 の初期化
+shadow(0xF3BD) int          T32NAM;          // SCREEN 1 パターンネームテーブル（BASE(5)）
+                                             // 初期値 1800H
+shadow(0xF3BF) int          T32COL;          // SCREEN 1 カラーテーブル（BASE(6)）
+                                             // 初期値 2000H
+shadow(0xF3C1) int          T32CGP;          // SCREEN 1 パターンジェネレータテーブル（BASE(7)）
+                                             // 初期値 0000H
+shadow(0xF3C3) int          T32ATR;          // SCREEN 1 スプライトアトリビュートテーブル（BASE(8)）
+                                             // 初期値 1B00H
+shadow(0xF3C5) int          T32PAT;          // SCREEN 1 スプライト・ジェネレータ・テーブル（BASE(9)）
+                                             // 初期値 3800H
+
+
+// SCREEN 2 の初期化
+shadow(0xF3C7) int          GRPNAM;          // SCREEN 2 パターンネームテーブル（BASE(10)）
+                                             // 初期値 1800H
+shadow(0xF3C9) int          GRPCOL;          // SCREEN 2 カラーテーブル（BASE(11)）
+                                             // 初期値 2000H
+shadow(0xF3CB) int          GRPCGP;          // SCREEN 2 パターンジェネレータテーブル（BASE(12)）
+                                             // 初期値 0000H
+shadow(0xF3CD) int          GRPATR;          // SCREEN 2 スプライトアトリビュートテーブル
+                                             // （BASE(13)）初期値 1B00H
+shadow(0xF3CF) int          GRPPAT;          // SCREEN 2 スプライト・ジェネレータ・テーブル
+                                             // （BASE(14)）初期値 3800H
+
+
+// SCREEN 3 の初期化
+shadow(0xF3D1) int          MLTNAM;          // SCREEN 3 パターンネームテーブル（BASE(15)）
+                                             // 初期値 0800H
+shadow(0xF3D3) int          MLTCOL;          // 未使用（BASE(16)）
+shadow(0xF3D5) int          MLTCGP;          // SCREEN 3パターンジェネレータテーブル（BASE(17)）
+                                             // 初期値 0000H
+shadow(0xF3D7) int          MLTATR;          // SCREEN 3 スプライトアトリビュートテーブル（BASE(18)）
+                                             // 初期値 1B00H
+shadow(0xF3D9) int          MLTPAT;          // SCREEN 3 スプライト・ジェネレータ・テーブル
+                                             // （BASE(19)）初期値 3800H
+
+
+// その他画面設定
+shadow(0xF3DB) byte         CLIKSW;          // キークリック 0=OFF 0≠ON 初期値 1（SCREEN で設定）
+shadow(0xF3DC) byte         CSRY;            // カーソル Y 座標 一番上は 1
+shadow(0xF3DD) byte         CSRX;            // カーソル X 座標 一番左は 1
+shadow(0xF3DE) byte         CNSDFG;          // ファンクション表示 0=ON 0≠OFF
+
+
+// VDP レジスタ
+shadow(0xF3DF) byte         RG0SAV;          // VDP レジスタ #0 の値（VDP(0)）
+shadow(0xF3E0) byte         RG1SAV;          // VDP レジスタ #1 の値（VDP(1)）
+shadow(0xF3E1) byte         RG2SAV;          // VDP レジスタ #2 の値（VDP(2)）
+shadow(0xF3E2) byte         RG3SAV;          // VDP レジスタ #3 の値（VDP(3)）
+shadow(0xF3E3) byte         RG4SAV;          // VDP レジスタ #4 の値（VDP(4)）
+shadow(0xF3E4) byte         RG5SAV;          // VDP レジスタ #5 の値（VDP(5)）
+shadow(0xF3E5) byte         RG6SAV;          // VDP レジスタ #6 の値（VDP(6)）
+shadow(0xF3E6) byte         RG7SAV;          // VDP レジスタ #7 の値（VDP(7)）
+shadow(0xF3E7) byte         STATFL;          // VDP ステータスの値（VDP(8)）
+                                             // MSX 2 以降は VDP ステータスレジスタ 0 の値
+shadow(0xF3E8) byte         TRGFLG;          // ジョイスティックトリガーの状態 
+                                             // 0=押されている 1=押されていない bit 0=SPACE キー
+                                             // bit 4=ポート 1・A ボタン bit 5=ポート 1・B ボタン
+                                             // bit 6=ポート 2・A ボタン bit 7=ポート 2・B ボタン
+shadow(0xF3E9) byte         FORCLR;          // 前景色（COLOR で設定）
+shadow(0xF3EA) byte         BAKCLR;          // 背景色（COLOR で設定）
+shadow(0xF3EB) byte         BDRCLR;          // 周辺色（COLOR で設定）
+shadow(0xF3EC) byte[3]      MAXUPD;          // CIRCLE が使用
+shadow(0xF3EF) byte[3]      MINUPD;          // CIRCLE が使用
+shadow(0xF3F2) byte         ATRBYT;          // グラフィックの COLOR コード
+
+
+// PLAY の作業領域
+shadow(0xF3F3) int          QUEUES;          // キューテーブル（PLAY が使用）
+shadow(0xF3F5) byte         FRCNEW;          // CLOAD のフラグ 0=CLOAD FFH=CLOAD?
+
+
+// キー入力の作業領域
+shadow(0xF3F6) byte         SCNCNT;          // キースキャン時間間隔
+shadow(0xF3F7) byte         REPCNT;          // オートリピート開始時間
+shadow(0xF3F8) int          PUTPNT;          // キーバッファ書き込み番地
+shadow(0xF3FA) int          GETPNT;          // キーバッファ読み込み番地
+
+
+// カセットのパラメータ
+shadow(0xF3FC) byte[5]      CS120;           // 1200 ボーの値
+shadow(0xF401) byte[5]      CS240;           // 2400 ボーの値
+shadow(0xF406) int          LOW;             // 現在のボーレート bit 0（SCREEN で設定）
+shadow(0xF408) int          HIGH;            // 現在のボーレート bit 1（SCREEN で設定）
+shadow(0xF40A) byte         HEADER;          // 現在のボーレ０ートヘッダセット（SCREEN で設定）
+shadow(0xF40B) int          ASPCT1;          // 256/アスペクト比（SCREEN で設定、CIRCLE が使用）
+shadow(0xF40D) int          ASPCT2;          // 256*アスペクト比（SCREEN で設定、CIRCLE が使用）
+shadow(0xF40F) byte[5]      ENDPRG;          // プログラムの終わり（RESUME NEXT が使用）
+
+
+// BASIC 内部で使用
+shadow(0xF414) byte         ERRFLG;          // エラーコード
+shadow(0xF415) byte         LPTPOS;          // プリンタのヘッド位置
+shadow(0xF416) byte         PRTFLG;          // プリンタへの出力
+shadow(0xF417) byte         NTMSXP;          // プリンタの種別 ０=MSX 用 0≠MSX 用ではない汎用
+shadow(0xF418) byte         RAWPRT;          // 0 ならコード変換してプリンタへ出力
+shadow(0xF419) int          VLZADR;          // VAL で置き換えられる文字のアドレス
+shadow(0xF41B) byte         VLZDAT;          // VAL で 0 に置き換える文字
+shadow(0xF41C) int          CURLIN;          // BASIC で実行中の行番号
+shadow(0xF41F) byte[318]    KBUF;            // クランチバッファ
+                                             // BUF (F55EH) から中間言語に変換されて入る
+shadow(0xF55D) byte         BUFMIN;          // "," (INPUT が使用）
+shadow(0xF55E) byte[258]    BUF;             // 入力文字をコードで入れるバッファ
+shadow(0xF660) byte         ENDBUF;          // バッファの終了コード
+shadow(0xF661) byte         TTYPOS;          // 仮想カーソル位置
+shadow(0xF662) byte         DIMFLG;          // 配列変数と単純変数との区別フラグ
+shadow(0xF663) byte         VALTYP;          // 変数の型
+shadow(0xF664) byte         OPRTYP;          // 演算子を保存 または クランチ用フラグ
+shadow(0xF665) byte         DONUM;           // クランチ用フラグ
+shadow(0xF666) int          CONTXT;          // テキストポインタの保存（CHRGET が使用）
+shadow(0xF668) byte         CONSAV;          // 定数トークンの保存（CHRGET が使用）
+shadow(0xF669) byte         CONTYP;          // 保存定数の種類
+shadow(0xF66A) byte[8]      CONLO;           // 保存定数の値
+shadow(0xF672) int          MEMSIZ;          // BASIC 使用メモリ最上位番地
+shadow(0xF674) int          STKTOP;          // スタックが使用可能な最上位番地（CLEAR で設定）
+shadow(0xF676) int          TXTTAB;          // BASIC テキストエリア先頭番地
+shadow(0xF678) int          TEMPPT;          // テンポラリディスクリプタ 空きエリアの先頭番地
+shadow(0xF67A) byte[30]     TEMPST;          // NUMTEMP の領域
+shadow(0xF698) byte[3]      DSCTMP;          // 文字列関数
+shadow(0xF69B) int          FRETOP;          // 文字列領域空きエリア先頭番地
+shadow(0xF69D) int          TEMP3;           // ガベージコレクション用 または USR が使用
+shadow(0xF69F) int          TEMP8;           // ガベージコレクション用
+shadow(0xF6A1) int          ENDFOR;          // FOR の次番地
+shadow(0xF6A3) int          DATLIN;          // DATA の行番号
+shadow(0xF6A5) byte         SUBFLG;          // 配列使用時のフラグ
+shadow(0xF6A6) byte         FLGINP;          // フラグ（INPUT・READ が使用）
+shadow(0xF6A7) int          TEMP;            // ステートメントコード用一時保存
+shadow(0xF6A9) byte         PTRFLG;          // 変換する行番号
+shadow(0xF6AA) byte         AUTFLG;          // AUTO が有効の時は 0 以外
+shadow(0xF6AB) int          AUTLIN;          // AUTO で入力した最新行番号
+shadow(0xF6AD) int          AUTINC;          // AUTO 行番号の増分
+shadow(0xF6AF) int          SAVTXT;          // RESUME 復帰のテキスト番地
+shadow(0xF6B1) int          SAVSTK;          // エラー回復ルーチン保存
+shadow(0xF6B3) int          ERRLIN;          // エラー行番号
+shadow(0xF6B5) int          DOT;             // 現在行
+shadow(0xF6B7) int          ERRTXT;          // エラー行番号
+shadow(0xF6B9) int          ONELIN;          // エラー発生時の飛び先行番号
+shadow(0xF6BB) byte         ONEFLG;          // エラー割り込みルーチン実行中は 1
+shadow(0xF6BC) int          TEMP2;           // 一時保存用
+shadow(0xF6BE) int          OLDLIN;          // CTRL+STOP・END・STOP の旧行番号
+shadow(0xF6C0) int          OLDTXT;          // 次に実行するテキストの番地
+shadow(0xF6C2) int          VARTAB;          // 単純変数の開始番地
+shadow(0xF6C4) int          ARYTAB;          // 配列テーブルの開始番地
+shadow(0xF6C6) int          STREND;          // BASIC がテキスト等で使用しているメモリ最後番地
+shadow(0xF6C8) int          DATPTR;          // READ で読まれたデータのテキスト番地
+shadow(0xF6CA) byte[26]     DEFTBL;          // 変数デフォルトの型
+
+
+shadow(0xF6E4) int          PRMSTK;          // ガベージコレクション用スタック上以前定義ブロック
+shadow(0xF6E6) int          PRMLEN;          // 処理対象テーブルのバイト
+shadow(0xF6E8) byte[100]    PARM1;           // PRMSIZ で設定される処理パラメータ定義テーブル
+shadow(0xF74C) int          PRMPRV;          // PRMSTK 以前のパラメータブロックのポインタ、
+// ガベージコレクション用
+shadow(0xF74E) int          PRMLN2;          // パラメータブロックの大きさ
+shadow(0xF750) byte[100]    PARM2;           // PRMSIZで設定されるパラメータの保存場所
+shadow(0xF7B4) byte         PRMFLG;          // PARM1がサーチ済みかどうかのフラグ
+shadow(0xF7B5) int          ARYTA2;          // サーチの終点
+shadow(0xF7B7) byte         NOFUNS;          // 処理対象関数がない場合は0
+shadow(0xF7B8) int          TEMP9;           // ガベージコレクション用
+shadow(0xF7BA) int          FUNACT;          // 処理対象関数の数
+shadow(0xF7BC) byte[8]      SWPTMP;          // SWAP 値の一時保存
+shadow(0xF7C4) byte         TRCFLG;          // TRACE ON・OFF
+
+
+// Math-Pack で使用
+shadow(0xF7C5) byte[43]     FBUFFR;          // Math-pack 一時保存場所
+shadow(0xF7F0) int          DECTMP;          // 10 進数→浮動小数点数変換で使用
+shadow(0xF7F2) int          DECTM2;          // 除算で使用
+shadow(0xF7F4) byte         DECCNT;          // 除算で使用
+shadow(0xF7F6) byte[16]     DAC;             // 演算対象の値
+shadow(0xF806) byte[48]     HOLD8;           // 10 進数乗算のレジスタ保存
+shadow(0xF836) byte[8]      HOLD2;           // Math-Pack が内部で使用
+shadow(0xF83E) byte[8]      HOLD;            // Math-Pack が内部で使用
+shadow(0xF847) byte[16]     ARG;             // DAC との演算対象となる値を設定
+shadow(0xF857) byte[8]      RNDX;            // 最後に使用した乱数（RND が設定）
+
+
+// BASIC インタプリタのデータ領域
+shadow(0xF85F) byte         MAXFIL;          // ファイル番号の最大値（MAXFILES が設定）
+shadow(0xF860) int          FILTAB;          // ファイルデータの先頭番地
+shadow(0xF862) int          NULBUF;          // バッファのポインタ（SAVE・LOAD が使用）
+shadow(0xF864) int          PTRFIL;          // 指定ファイルのファイルデータのある位置
+shadow(0xF866) byte[11]     FILNAM;          // ファイル名の保存
+shadow(0xF871) byte[11]     FILNM2;          // ファイル名の保存
+shadow(0xF87C) byte         NLONLY;          // 0≠プログラムが読み込まれている
+shadow(0xF87D) int          SAVEND;          // マシン語プログラム最終番地（BSAVE が使用）
+shadow(0xF87F) byte[160]    FNKSTR;          // ファンクションキー設定文字列（KEY などで設定）
+shadow(0xF91F) byte[3]      CGPNT;           // ROM 上のフォント格納先スロット・番地
+shadow(0xF922) int          NAMBAS;          // 現在のパターンネームテーブルのベース番地
+shadow(0xF924) int          CGPBAS;          // 現在のパターンジェネレータテーブルのベース番地
+shadow(0xF926) int          PATBAS;          // 現在のスプライトジェネレータテーブルのベース番地
+shadow(0xF928) int          ATRBAS;          // 現在のスプライトアトリビュートテーブルのベース番地
+shadow(0xF92A) int          CLOC;            // グラフィックルーチンが内部で使用
+shadow(0xF92C) byte         CMASK;           // グラフィックルーチンが内部で使用
+shadow(0xF92D) int          MINDEL;          // グラフィックルーチンが内部で使用
+shadow(0xF92F) int          MAXDEL;          //グラフィックルーチンが内部で使用
+
+
+// CIRCLE のデータ領域
+shadow(0xF931) int          ASPECT;          // 円の縦横比
+shadow(0xF933) int          CENCNT;          // CIRCLE が使用
+shadow(0xF935) byte         CLINEF;          // 線が中心に向かって引かれているか
+shadow(0xF936) int          CNPNTS;          // 線画する場所
+shadow(0xF938) byte         CPLOTF;          // CIRCLE が使用
+shadow(0xF939) int          CPCNT;           // 円÷8 の数
+shadow(0xF93B) int          CPNCNT8;         // CIRCLE が使用
+shadow(0xF93D) int          CPCSUM;          // CIRCLE が使用
+shadow(0xF93F) int          CSTCNT;          // CIRCLE が使用
+shadow(0xF941) byte         CSCLXY;          // x・y のスケール
+shadow(0xF942) int          CSAVEA;          // ADVGRP の予約領域
+shadow(0xF944) byte         CSAVEM;          // ADVGRP の予約領域
+shadow(0xF945) int          CXOFF;           // 中心からの x オフセット値
+shadow(0xF947) int          CYOFF;           // 中心からの y オフセット値
+
+
+// PAINT のデータ領域
+shadow(0xF949) byte         LOHMSK;          // PAint          が使用
+shadow(0xF94A) byte         LOHDIR;          // PAint          が使用
+shadow(0xF94B) int          LOHADR;          // PAint          が使用
+shadow(0xF94D) int          LOHCNT;          // PAint          が使用
+shadow(0xF94F) int          SKPCNT;          // スキップカウント
+shadow(0xF951) int          MIVCNT;          // 動作カウント
+shadow(0xF953) byte         PDIREC;          // 線画の方向
+shadow(0xF954) byte         LFPROG;          // PAint          が使用
+shadow(0xF955) byte         RTPROG;          // PAint          が使用
+
+
+// PLAY のデータ領域
+shadow(0xF956) int          MCLTAB;          // マクロテーブルの先頭（PLAY・DRAW が使用） 
+shadow(0xF958) byte         MCLFLG;          // PLAY・DRAW が使用
+shadow(0xF959) byte[24]     QUETAB;          // キューテーブル、4キュー×6バイト
+shadow(0xF971) byte[4]      QUEBAK;          // BCKQ で使用
+shadow(0xF975) byte[128]    VOICAQ;          // 音声 1 のキュー
+shadow(0xF9F5) byte[128]    VOICBQ;          // 音声 2 のキュー
+shadow(0xFA75) byte[128]    VOICCQ;          // 音声 3 のキュー
+
+// MSX2 で追加された領域
+shadow(0xFAF5) byte         DPPAGE;          // ディスプレイページ番号
+shadow(0xFAF6) byte         ACPAGE;          // アクティブページ番号
+shadow(0xFAF7) byte         AVCSAV;          // AV コントロールポートの保存
+shadow(0xFAF8) byte         EXBRSA;          // SUB-ROM スロットアドレス
+shadow(0xFAF9) byte         CHRCNT;          // ローマ字カナ変換の文字数カウント
+shadow(0xFAFA) int          ROMA;            // ローマ字カナ変換の入力文字バッファ
+shadow(0xFAFC) byte         MODE;            // ローマ字カナ変換モード、VRAM サイズ
+                                             // bit1～2 VRAM サイズ 00=16k 01=64k 10=128k
+                                             // bit3 VRAM 4000H 毎のマスク 1=有効 0=無効 
+shadow(0xFAFD) byte         NORUSE;          // 漢字ドライバが使用
+shadow(0xFAFE) int          XSAVE;           // ライトペン bit0～7 X 座標 bit15=割り込み時に 1
+shadow(0xFAFF) byte         XOFFS;           // ライトペン X座標 キャリブレーション オフセット値
+shadow(0xFB00) int          YSAVE;           // ライトペン bit0～7 Y 座標
+shadow(0xFB01) byte         YOFFS;           // ライトペン Y座標 キャリブレーション オフセット値
+shadow(0xFB02) byte         LOGOPR;          // ロジカルオペレーションコード
+
+
+// RS-232C のデータ領域
+shadow(0xFB03) byte         TOCNT;           // RS-232C が使用
+shadow(0xFB04) int          RSFCB;           // RS-232C のアドレス
+shadow(0xFB06) byte[5]      RSIQLN;          // RS-232C が使用
+shadow(0xFB07) byte[5]      MEXBIH;          // スロット呼び出し
+shadow(0xFB0C) byte[5]      OLDSTT;          // スロット呼び出し
+shadow(0xFB11) byte[5]      OLDINT;          // スロット呼び出し
+shadow(0xFB16) byte         DEVNUM;          // RS-232C が使用
+shadow(0xFB17) byte[3]      DATCNT;          // RS-232C が使用
+shadow(0xFB1A) byte         ERRORS;          // RS-232C が使用
+shadow(0xFB1B) byte         FLAGS;           // RS-232C が使用
+shadow(0xFB1C) byte         ESTBLS;          // RS-232C が使用
+shadow(0xFB1D) byte         COMMSK;          // RS-232C が使用
+shadow(0xFB1E) byte         LSTCOM;          // RS-232C が使用
+shadow(0xFB1F) byte         LSTMOD;          // RS-232C が使用
+shadow(0xFB20) byte         HOKVLD;          // 拡張BIOSの有無
+
+// MSX-DOS のデータ領域
+shadow(0xFB21) byte[8]      DRVTBL;          // DISK ROMのスロットアドレスなど
+shadow(0xFB29) byte[11]     DRVINT;          // MSX-DOS が使用
+
+// PLAY のデータ領域
+shadow(0xFB35) byte         PRSCNT;          // bit0～1 ストリングパルス bit7=0 1 パス
+shadow(0xFB36) int          SAVSP;           // ポインターの保存（PLAY が使用）
+shadow(0xFB38) byte         VOICEN;          // 現在の音声
+shadow(0xFB39) int          SAVVOL;          // 一時停止時の音量を保存
+shadow(0xFB3B) byte         MCLLEN;          // PLAY が使用
+shadow(0xFB3C) byte         MCLPTR;          // PLAY が使用
+shadow(0xFB3E) byte         QUEUEN;          // PLAY が使用
+shadow(0xFC3F) byte         MUSICF;          // 音楽再生時のフラグ
+shadow(0xFB40) byte         PLYCNT;          // キューに入っている数
+
+// 音声データ
+shadow(0xFB41) byte[37]     VCBA;            // 音声 0 データ
+shadow(0xFB66) byte[37]     VCBB;            // 音声 1 データ
+shadow(0xFB8B) byte[37]     VCBC;            // 音声 2 データ
+
+
+// データ領域
+shadow(0xFBB0) byte         ENSTOP;          // [SHIFT]+CTRL]+[かな] のウォームスタート 0=無効 0≠有効
+shadow(0xFBB1) byte         BASROM;          // BASIC テキストの場所 0=RAM または ROM 内
+shadow(0xFBB2) byte[24]     LINTTB;          // ラインターミナルテーブル 画面各行の情報を保存
+shadow(0xFBCA) int          FSTPOS;          // 行最初の文字位置（INLIN (00B1H) が使用)
+shadow(0xFBCC) byte         CODSAV;          // カーソルに重なっている文字を保存
+shadow(0xFBCD) byte         FNKSWI;          // KEY ON で表示されているキー 1=F1～F5 0=F6～F10
+shadow(0xFBCE) byte[10]     FNKFLG;          // ON KEY GOSUB の状態
+shadow(0xFBD8) byte         ONGSBF;          // TRPTBL (FC4CH) の待機イベント発生確認フラグ
+shadow(0xFBD9) byte         CLIKFL;          // キークリッククラグ
+shadow(0xFBDA) byte[11]     OLDKEY;          // キーマトリクスの状態 (旧)
+shadow(0xFBE5) byte[11]     NEWKEY;          // キーマトリクスの状態 (新)
+shadow(0xFBF0) byte[40]     KEYBUF;          // キーコードバッファ
+shadow(0xFC18) byte[40]     LINWRK;          // スクリーンハンドラが使用
+shadow(0xFC40) byte[8]      PATWRK;          // パターンコンバータが使用
+shadow(0xFC48) int          BOTTOM;          // 搭載 RAM の先頭アドレス
+shadow(0xFC4A) int          HIMEM;           // 使用可能なメモリの最大アドレス（CLEAR で設定）
+shadow(0xFC4C) byte[78]     TRPTBL;          // ON ～ GOSUB の状態
+shadow(0xFC9A) byte         RTYCNT;          // BASIC が使用
+shadow(0xFC9B) byte         INTFLG;          // [CTRL]+[STOP] が押された場合の停止動作 03H＝停止
+shadow(0xFC9C) byte         PADY;            // パドルの Y 座標
+shadow(0xFC9D) byte         PADX;            // パドルの X 座標
+shadow(0xFC9E) int          JIFFY;           // TIME の値（PLAY が使用）
+shadow(0xFCA0) int          INTVAL;          // ON INTERVAL GOSUB の間隔
+shadow(0xFCA2) int          INTCNT;          // ON INTERVAL GOSUB のカウント
+shadow(0xFCA4) byte         LOWLIM;          // カセットテープの読み込みで使用
+shadow(0xFCA5) byte         WINWID;          // カセットテープの読み込みで使用
+shadow(0xFCA6) byte         GRPHED;          // グラフィック文字の送出 1=グラフィック文字 0=通常文字
+shadow(0xFCA7) byte         ESCCNT;          // エスケープシーケンス (ESC) コードのカウント
+shadow(0xFCA8) byte         INSFLG;          // 挿入モード 0=上書き 1=挿入
+shadow(0xFCA9) byte         CSRSW;           // カーソルスイッチ 0=非表示 0≠表示（LOCATE で設定）
+shadow(0xFCAA) byte         CSTYLE;          // カーソル形状 0=█ 0≠▄
+shadow(0xFCAB) byte         CAPST;           // CAPS キーの状態 0=OFF 1=ON
+shadow(0xFCAC) byte         KANAST;          // かなキーの状態 0=OFF 1=ON
+shadow(0xFCAD) byte         KANAMD;          // かな配列 0=50 音配列 0以外=JIS 配列
+shadow(0xFCAE) byte         FLBMEM;          // 0=BASIC プログラムが読まれている
+shadow(0xFCAF) byte         SCRMOD;          // スクリーンモード番号（SCREEN で設定）
+shadow(0xFCB0) byte         OLDSCR;          // スクリーンモード予約領域
+shadow(0xFCB1) byte         CASPRV;          // 文字予約領域（CAS: が使用）
+shadow(0xFCB2) byte         BRDATR;          // 境界色 (PAINTで設定)
+shadow(0xFCB3) int          GXPOS;           // X 座標
+shadow(0xFCB5) int          GYPOS;           // Y 座標
+shadow(0xFCB7) int          GRPACX;          // グラフィックアキュムレータ X 座標
+shadow(0xFCB9) int          GRPACY;          // グラフィックアキュムレータ Y 座標
+shadow(0xFCBB) byte         DRWFLG;          // フラグ（DRAW が使用）
+shadow(0xFCBC) byte         DRWSCL;          // 倍率 0=線画していない 0≠線画中 (DRAW が使用)
+shadow(0xFCBD) byte         DRWANG;          // 角度 (DRAW が使用)
+shadow(0xFCBE) byte         RUNBNF;          // BLOAD・BSAVE の進行中かを表すフラグ
+shadow(0xFCBF) int          SAVENT;          // 開始番地（BSAVE が使用）
+shadow(0xFCC1) byte[4]      EXPTBL;          // 拡張スロットのフラグテーブル
+shadow(0xFCC5) byte[4]      SLTTBL;          // 各拡張スロットレジスタでの現在のスロット選択状態
+shadow(0xFCC9) byte         SLTATR;          // SLTATR 各スロット用の予約属性
+shadow(0xFD09) byte[128]    SLTWRK;          // 各スロットに割り当てる特定の作業領域
+shadow(0xFD89) byte[16]     PROCNM;          // 展開された名前（CALL の後）・拡張装置（OPEN の後）
+shadow(0xFD99) byte         DEVICE;          // カートリッジデバイスが使用
+
+// フック、変更した場合は、元のフックを CALL する必要がある
+shadow(0xFD9A) byte[5]      H_KEYI;          // MSXIO 割り込み処理の開始
+                                             // (RS-232C などの割り込み処理を追加)
+shadow(0xFD9F) byte[5]      H_TIMI;          // MSXIO タイマー割り込み処理 (タイマー割り込み処理を追加)
+shadow(0xFDA4) byte[5]      H_CHPH;          // MSXIO CHPUT (1 文字出力) の開始
+shadow(0xFDA9) byte[5]      H_DSPC;          // MSXIO DSPCSR (カーソル表示) の開始
+shadow(0xFDAE) byte[5]      H_ERAC;          // MSXIO ERACSR (カーソル消去) の開始
+shadow(0xFDB3) byte[5]      H_DSPF;          // MSXIO DSPFNK (ファンクションキー表示) の開始
+shadow(0xFDB8) byte[5]      H_ERAF;          // MSXIO ERAFNK (ファンクションキー消去) の開始
+shadow(0xFDBD) byte[5]      H_TOTE;          // MSXIO TOTEXT (テキストモードの SCREEN 設定) の開始
+shadow(0xFDC2) byte[5]      H_CHGE;          // MSXIO CHGET (1 文字取得) の開始
+shadow(0xFDC7) byte[5]      H_INIP;          // MSXIO INIPAT (キャラクターパレット初期化) の開始
+shadow(0xFDCC) byte[5]      H_KEYC;          // MSXIO KEYCOD (キーコード変換) の開始
+shadow(0xFDD1) byte[5]      H_KYEA;          // MSXIO NMI ルーチン (Key Easy) の開始
+shadow(0xFDD6) byte[5]      H_NMI;           // MSXIO NMI (マスク不可割り込み) の開始
+shadow(0xFDDB) byte[5]      H_PINL;          // MSXIO PINLIN (1 行入力) の開始
+shadow(0xFDE0) byte[5]      H_QINL;          // MSXINL QINLIN ("? " を表示し 1 行表示) の開始
+shadow(0xFDE5) byte[5]      H_INLI;          // MSXINL INLIN (1 行入力) の開始
+shadow(0xFDEA) byte[5]      H_ONGO;          // MSXSTS INGOTP (ON GOTO) の開始
+shadow(0xFDEF) byte[5]      H_DSKO;          // MSXSTS DSKO$ (ディスク出力) の開始
+shadow(0xFDF4) byte[5]      H_SETS;          // MSXSTS SETS (属性設定) の開始
+shadow(0xFDF9) byte[5]      H_NAME;          // MSXSTS NAME (ファイル名変更) の開始
+shadow(0xFDFE) byte[5]      H_KILL;          // MSXSTS KILL (ファイル削除) の開始
+shadow(0xFE03) byte[5]      H_IPL;           // MSXSTS IPL (プログラム読み込み初期化) の開始
+shadow(0xFE08) byte[5]      H_COPY;          // MSXSTS COPY (ファイルコピー) の開始
+shadow(0xFE0D) byte[5]      H_CMD;           // MSXSTS CMD (拡張コマンド) の開始
+shadow(0xFE12) byte[5]      H_DSKF;          // MSXSTS DSKF (ディスク容量の空き容量を得る) の開始
+shadow(0xFE17) byte[5]      H_DSKI;          // MSXSTS DSKI (ディスク入力) の開始
+shadow(0xFE1C) byte[5]      H_ATTR;          // MSXSTS ATTR$ (属性) の開始
+shadow(0xFE21) byte[5]      H_LSET;          // MSXSTS LSET (値の左寄せ) の開始
+shadow(0xFE26) byte[5]      H_RSET;          // MSXSTS RSET (値の右寄せ) の開始
+shadow(0xFE2B) byte[5]      H_FIEL;          // MSXSTS FIELD (ランダムファイル領域割り当て) の開始
+shadow(0xFE30) byte[5]      H_MKI;           // MSXSTS MKI$ (整数型の生成) の開始
+shadow(0xFE35) byte[5]      H_MKS;           // MSXSTS MKS$ (単精度実数型の生成) の開始
+shadow(0xFE3A) byte[5]      H_MKD;           // MSXSTS MKD$ (倍精度実数型の生成) の開始
+shadow(0xFE3F) byte[5]      H_CVI;           // MSXSTS CVI (整数型へ変換) の開始
+shadow(0xFE44) byte[5]      H_CVS;           // MSXSTS CVS (単精度実数型へ変換) の開始
+shadow(0xFE49) byte[5]      H_CVD;           // MSXSTS CVD (倍精度変数型へ変換l) の開始
+shadow(0xFE4E) byte[5]      H_GETP;          // SPDSK GETPTR (ファイルポインタの取得) の開始
+shadow(0xFE53) byte[5]      H_SETF;          // SPCDSK SETFIL (ファイルポインタの設定) の開始
+shadow(0xFE58) byte[5]      H_NOFO;          // SPDSK NOFOR (FOR なしの OPEN) の開始
+shadow(0xFE5D) byte[5]      H_NULO;          // SPCDSK NULOPN (ファイルを使用しない OPEN) の開始
+shadow(0xFE62) byte[5]      H_NTFL;          // SPCDSK NTFLO (ファイル番号 0 以外の処理) の開始
+shadow(0xFE67) byte[5]      H_MERG;          // SPCDSK MERGE (プログラムファイルの結合) の開始
+shadow(0xFE6C) byte[5]      H_SAVE;          // SPCDSK SAVE (保存) の開始
+shadow(0xFE71) byte[5]      H_BINS;          // SPCDSK BINSAV (バイナリー保存) の開始
+shadow(0xFE76) byte[5]      H_BINL;          // SPCDSK BINLOD (バイナリー読み込み) の開始
+shadow(0xFD7B) byte[5]      H_FILE;          // SPCDSK FILES (ファイル名一覧表示) の開始
+shadow(0xFE80) byte[5]      H_DGET;          // SPCDSK DGET (デイスクの GET) の開始
+shadow(0xFE85) byte[5]      H_FILO;          // SPCDSK FILOU1 (ファイル出力i) の開始
+shadow(0xFE8A) byte[5]      H_INDS;          // SPCDSK INDSKC (ファイル属性の入力) の開始
+shadow(0xFE8F) byte[5]      H_RSLF;          // SPCDSK 前のドライブを再選択 の開始
+shadow(0xFE94) byte[5]      H_SAVD;          // SPCDSK 現在のドライブを保存 の開始
+shadow(0xFE99) byte[5]      H_LOC;           // SPCDSK LOC (ファイル位置の取得) の開始
+shadow(0xFE9E) byte[5]      H_LOF;           // SPCDSK LOF (ファイルサイズの取得) の開始
+shadow(0xFEA3) byte[5]      H_EOF;           // SPCDSK EOF (ファイル終了の確認) の開始
+shadow(0xFEA8) byte[5]      H_FPOS;          // SPCDSK FPOS (ファイルの場所) の開始
+shadow(0xFEAD) byte[5]      H_BAKU;          // SPCDSK BAKUPT (バックアップ) の開始
+shadow(0xFEB2) byte[5]      H_PARD;          // SPCDEV PARDEV (周辺機器名の取得) の開始
+shadow(0xFEB7) byte[5]      H_NODE;          // SPCDEV NODEVN (ドライブなし) の開始
+shadow(0xFEBC) byte[5]      H_POSD;          // SPCDEV POSDSK の開始
+shadow(0xFEC1) byte[5]      H_DEVN;          // SPCDEV DEVNAM (ドライブ名の処理) の開始
+shadow(0xFEC6) byte[5]      H_GEND;          // SPCDEV GENDSP の開始
+shadow(0xFECB) byte[5]      H_RUNC;          // BIMISC RUNC (RUN のクリア処理) の開始
+shadow(0xFED0) byte[5]      H_CLEA;          // BIMISC CLEARC (CLEAR のクリア処理) の開始
+shadow(0xFED5) byte[5]      H_LOPD;          // BIMISC LOPDFT (ループ・デフォルト値の設定) の開始
+shadow(0xFEDA) byte[5]      H_STKE;          // BIMISC STKERR (スタックエラー) の開始
+shadow(0xFEDF) byte[5]      H_ISFL;          // BIMISC ISFLIO (ファイルの入出力確認) の開始
+shadow(0xFEE4) byte[5]      H_OUTD;          // BIO OUTDO (OUT の実行) の開始
+shadow(0xFEE9) byte[5]      H_CRDO;          // BIO CRDO (CRLF の実行) の開始
+shadow(0xFEEE) byte[5]      H_DSKC;          // BIO DSKCHI (ディスクの属性入力) の開始
+shadow(0xFEF3) byte[5]      H_DOGR;          // GENGRP DOGRPH (グラフィック処理実行) の開始
+shadow(0xFEF8) byte[5]      H_PRGE;          // BINTRP PRGEND (プログラムの終了）の開始
+shadow(0xFEFD) byte[5]      H_ERRP;          // BINTRP ERRPTR (エラー表示) の開始
+shadow(0xFF02) byte[5]      H_ERRF;          // BINTRP
+shadow(0xFF07) byte[5]      H_READ;          // BINTRP READY
+shadow(0xFF0C) byte[5]      H_MAIN;          // BINTRP MAIN
+shadow(0xFF11) byte[5]      H_DIRD;          // BINTRP DIRDO (ダイレクトステートメントの実行) の開始
+shadow(0xFF16) byte[5]      H_FINI;          // BINTRP
+shadow(0xFF1B) byte[5]      H_FINE;          // BINTRP
+shadow(0xFF20) byte[5]      H_CRUN;          // BINTRP
+shadow(0xFF25) byte[5]      H_CRUS;          // BINTRP
+shadow(0xFF2A) byte[5]      H_ISRE;          // BINTRP
+shadow(0xFF2F) byte[5]      H_NTFN;          // BINTRP
+shadow(0xFF34) byte[5]      H_NOTR;          // BINTRP
+shadow(0xFF39) byte[5]      H_SNGF;          // BINTRP
+shadow(0xFF3E) byte[5]      H_NEWS;          // BINTRP
+shadow(0xFF43) byte[5]      H_GONE;          // BINTRP
+shadow(0xFF48) byte[5]      H_CHRG;          // BINTRP
+shadow(0xFF4D) byte[5]      H_RETU;          // BINTRP
+shadow(0xFF52) byte[5]      H_PRTF;          // BINTRP
+shadow(0xFF57) byte[5]      H_COMP;          // BINTRP
+shadow(0xFF5C) byte[5]      H_FINP;          // BINTRP
+shadow(0xFF61) byte[5]      H_TRNM;          // BINTRP
+shadow(0xFF66) byte[5]      H_FRME;          // BINTRP
+shadow(0xFF6B) byte[5]      H_NTPL;          // BINTRP
+shadow(0xFF70) byte[5]      H_EVAL;          // BINTRP
+shadow(0xFF75) byte[5]      H_ONKO;          // BINTRP
+shadow(0xFF7A) byte[5]      H_FING;          // BINTRP
+shadow(0xFF7F) byte[5]      H_ISMI;          // BINTRP ISMID$ (MID$ の確認) の開始
+shadow(0xFF84) byte[5]      H_WIDT;          // BINTRP WIDTHS (WIDTH) の開始
+shadow(0xFF89) byte[5]      H_LIST;          // BINTRP LIST の開始
+shadow(0xFF8E) byte[5]      H_BUFL;          // BINTRP BUFLIN (バッファライン) の開始
+shadow(0xFF93) byte[5]      H_FRQI;          // BINTRP FRQINT
+shadow(0xFF98) byte[5]      H_SCNE;          // BINTRP
+shadow(0xFF9D) byte[5]      H_FRET;          // BINTRP FRETMP
+shadow(0xFFA2) byte[5]      H_PTRG;          // BIPTRG PTRGET (ポインタ設定) の開始
+shadow(0xFFA7) byte[5]      H_PHYD;          // MSXIO PHYDIO (物理ディスク入出力) の開始
+shadow(0xFFAC) byte[5]      H_FORM;          // MSXIO FORMAT (ディスクのフォーマット) の開始
+shadow(0xFFB1) byte[5]      H_ERRO;          // BINTRP ERROR
+shadow(0xFFB6) byte[5]      H_LPTO;          // MSXIO LPTOUT (プリンタ出力) の開始
+shadow(0xFFBB) byte[5]      H_LPTS;          // MSXIO LPTSTT (プリンタ状態の取得) の開始
+shadow(0xFFC0) byte[5]      H_SCRE;          // MSXSTS SCREEN の開始
+shadow(0xFFC5) byte[5]      H_PLAY;          // MSXSTS PLAY の開始
+
+// 拡張 BIOS 呼び出しプログラム
+shadow(0xFFCA) byte[5]      FCALL;           // 拡張 BIOS がフックに使用
+shadow(0xFFCF) byte[5]      DISINT;          // MSX-DOS が使用
+shadow(0xFFD4) byte[5]      ENAINT;          // MSX-DOS が使用
+
+
+// VDP レジスタ（V9938・V9958）
+shadow(0xFFE7) byte         RG8SAV;           // VDP レジスタ #8 の値（VDP(9)）
+shadow(0xFFE8) byte         RG9SAV;           // VDP レジスタ #9 の値（VDP(10)）
+shadow(0xFFE9) byte         RG10SA;           // VDP レジスタ #10 の値（VDP(11)）
+shadow(0xFFEA) byte         RG11SA;           // VDP レジスタ #11 の値（VDP(12)）
+shadow(0xFFEB) byte         RG12SA;           // VDP レジスタ #12 の値（VDP(13)）
+shadow(0xFFEC) byte         RG13SA;           // VDP レジスタ #13 の値（VDP(14)）
+shadow(0xFFED) byte         RG14SA;           // VDPレジスタ #14 の値（VDP(15)）
+shadow(0xFFEE) byte         RG15SA;           // VDPレジスタ #15 の値（VDP(16)）
+shadow(0xFFEF) byte         RG16SA;           // VDPレジスタ #16 の値（VDP(17)）
+shadow(0xFFF0) byte         RG17SA;           // VDPレジスタ #17 の値（VDP(18)）
+shadow(0xFFF1) byte         RG18SA;           // VDPレジスタ #18 の値（VDP(19)）
+shadow(0xFFF2) byte         RG19SA;           // VDPレジスタ #19 の値（VDP(20)）
+shadow(0xFFF3) byte         RG20SA;           // VDPレジスタ #20 の値（VDP(21)）
+shadow(0xFFF4) byte         RG21SA;           // VDPレジスタ #21 の値（VDP(22)）
+shadow(0xFFF5) byte         RG22SA;           // VDPレジスタ #22 の値（VDP(23)）
+shadow(0xFFF6) byte         RG23SA;           // VDPレジスタ #23 の値（VDP(24)）
+shadow(0xFFF7) int          ROMSLT;           // メインRAM スロット番地
+shadow(0xFFFA) byte         RG25SA;           // VDPレジスタ #25 の値 (VDP(26))
+shadow(0xFFFB) byte         RG26SA;           // VDPレジスタ #26 の値 (VDP(27))
+shadow(0xFFFC) byte         RG27SA;           // VDPレジスタ #27 の値 (VDP(28))
+                                              // 0xFFFD システム予約
+
+// 拡張スロット選択レジスタ
+shadow(0xFFFF) byte         SSLTREG;          // 拡張スロット選択レジスタ

@@ -26,6 +26,7 @@ module.exports.MATCH_CR               = new RegExp("^\n", "mg");
 module.exports.MATCH_RESERVED_WORD    = new RegExp("^(function|inline|if|else|while|for|loop|switch|case|default|unsafe|using|try|catch|finally)$");
 
 module.exports.MATCH_CONST            = new RegExp("^(const)$");
+module.exports.MATCH_SHADOW           = new RegExp("^(shadow)$");
 module.exports.MATCH_VARLIABLE        = new RegExp("^(byte|sbyte|int|sint|string|char)$");
 module.exports.MATCH_STRUCT           = new RegExp("^(struct)$");
 module.exports.MATCH_ASSIGN           = new RegExp("^(=)$");

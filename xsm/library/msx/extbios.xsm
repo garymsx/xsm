@@ -1,0 +1,505 @@
+// 拡張BIOS
+import "/msx/bios.xsm";
+import "/msx/workarea.xsm";
+
+/**
+ * 拡張BIOSをコールする
+ * @param IX コールするアドレス
+ */
+function _CALSLT(IX) {
+	const int NMI = 0x0066;
+
+    exx;                     // Save argument registers over setup
+	ex AF,AF;
+	HL = 0x015F;             // EXTROM
+	push HL;                 //                 +2 byte
+	HL = 0xc300;             // jp xxxx, nop
+	push HL;                 //                 +4 byte
+    push IX;                 // SUB ROM entry   +6 byte
+	HL = 0x21dd;             // ld ix,xxxx
+	push HL;                 //                 +8 byte
+	HL = 0x3333;             // inc sp, inc sp
+	push HL;                 //                +10 byte
+
+    // HOOK NMIの書き換え
+	HL = 0;
+    HL += SP;
+    A = 0xc3;                // JP
+    H_NMI[0] = A;
+    *(H_NMI + 1) = HL;       // スタックに積んだコードへJP
+
+    ex AF,AF;                // Restore registers
+    exx;
+    CALSLT(IX = NMI);        // NMI(0x0066)の実行
+    ei;
+    HL = 10;                 // スタックに積んだコードを破棄する
+    HL += SP;
+    SP = HL;
+    return;
+}
+
+/**
+ * グラフィック画面に文字を1文字出力します(スクリーン5～8のみで動作可能)。
+ * @type SUB/MSX2
+ * @param A 文字コード
+ */
+inline EXT_GRPPR(A) {
+	IX = 0x0089;
+	_CALSLT(IX);
+}
+
+/**
+ * ボックスを書きます
+ * @type SUB/MSX2
+ * @param BC 始点のX座標
+ * @param DE 始点のY座標
+ * @param 【GXPOS(0xFCB3)】 終点のX座標
+ * @param 【GYPOS(0xFCB5)】 終点のY座標
+ * @param 【ATRBYT(0xF3F2)】アトリビュート(色)
+ * @param 【LOGOPR(0xFB02)】ロジカノレオペレーションコード
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_NVBXLN(BC,DE) using AF, BC, DE, HL, IX, IY {
+	IX = 0x00C9;
+	_CALSLT(IX);
+}
+
+/**
+ * 塗りつぶされたボックスを描きます。
+ * @type SUB/MSX2
+ * @param BC 始点のX座標
+ * @param DE 始点のY座標
+ * @param 【GXPOS(0xFCB3)】 終点のX座標
+ * @param 【GYPOS(0xFCB5)】 終点のY座標
+ * @param 【ATRBYT(0xF3F2)】アトリビュート(色)
+ * @param 【LOGOPR(0xFB02)】ロジカノレオペレーションコード
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_NVBXFL(BC,DE) using AF, BC, DE, HL, IX, IY {
+	IX = 0x00CD;
+	_CALSLT(IX);
+}
+
+/**
+ * スクリーンモードを変更します。
+ * @type SUB/MSX2
+ * @param A スクリーンモード(0～8)
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_CHGMOD(A) using AF, BC, DE, HL, IX, IY {
+	IX = 0x00D1;
+	_CALSLT(IX);
+}
+
+/**
+ * 画面をテキストモード(40x24) にして初期化します。
+ * @type SUB/MSX2
+ * @param 【TXTNAM(0xF3B3)】パターンネームテーブルの先頭アドレス
+ * @param 【TXTCGP(0xF3B7)】パターンジェネレータテーブルの先頭アドレス
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_INITXT() using AF, BC, DE, HL, IX, IY {
+	IX = 0x0105;
+	_CALSLT(IX);
+}
+
+/**
+ * 画面をテキストモード(32x24) にして初期化します。
+ * @type SUB/MSX2
+ * @param 【T32NAM(0xF3BD)】 パターンネームテーブルの先頭アドレス
+ * @param 【T32COL(0xF3BF)】 カラーテーブルの先頭アドレス
+ * @param 【T32CGP(0xF3CI)】 パターンジェネレータテーブルの先頭アドレス
+ * @param 【T32ATR(0xF3C3)】 スプライトアトリビュートテーブルの先頭アドレス
+ * @param 【T32PAT(0xF3C5)】 スプライトジェネレータテーブルルの先頭アドレス
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_INIT32() using AF, BC, DE, HL, IX, IY {
+	IX = 0x00D9;
+	_CALSLT(IX);
+}
+
+/**
+ * 画面を高解像度グラフィックモードにして初期化します。
+ * @type SUB/MSX2
+ * @param 【GRPNAM(F3C7H)】 パターンネームテーブルの先頭アドレス
+ * @param 【GRPCOL(F3C9H)】 カラーテーブルの先頭アドレス
+ * @param 【GRPCGP(F3CBH)]  パターンジェネレータテーブルの先頭アドレス
+ * @param 【GRPATR(F3CDH)】 スプライトアトリビュートテーブルの先頭アドレス
+ * @param 【GRPPAT(F3CFH)】 スプライトジェネレータテーブルの先頭アドレス
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_INIGRP() using AF, BC, DE, HL, IX, IY {
+	IX = 0x00DD;
+	_CALSLT(IX);
+}
+
+/**
+ * 画面をマルチカラーモードにして初期化します。
+ * @type SUB/MSX2
+ * @param 【MLTNAM(0xF3DI)】 パターンネームテーブルの先頭アドレス
+ * @param 【MLTCOL(0xF3D3)】 カラーテーブルの先頭アドレス
+ * @param 【MLTCGP(0xF3D5)】 パターンジェネレータテーブルの先頭アドレス
+ * @param 【MLTATR(0xF3D7)】 スプライトアトリビュートテーブルの先頭アドレス
+ * @param 【MLTPAT(0xF3D9)】 スプライトジェネレータテーブルの先頭アドレス
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_INIMLT() using AF, BC, DE, HL, IX, IY {
+	IX = 0x00E1;
+	_CALSLT(IX);
+}
+
+/**
+ * VDPをテキストモード(40x24)にします。
+ * @type SUB/MSX2
+ * @param 【TXTNAM(0xF3B3)】パターンネームテーブルのアドレス
+ * @param 【TXTCGP(0xF3B7)】パターンジェネレータテーブルのアドレス
+ * @param 【LINL40(0xF3AE)】1行の幅(WIDTH文によって設定する値)
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_SETTXT() using AF, BC, DE, HL, IX, IY {
+	IX = 0x00E5;
+	_CALSLT(IX);
+}
+
+/**
+ * VDPをテキストモード(32x24)にします。
+ * @type SUB/MSX2
+ * @param 【T32NAM(0xF3BD)】パターンネームテーブルのアドレス
+ * @param 【T32COL(0xF3BF)】カラーテーブルのアドレス
+ * @param 【T32CGP(0xF3C1)】パターンジェネレータテーブルのアドレス
+ * @param 【T32ATR(0xF3C3)】スプライトアトリビュートテーブルのアドレス
+ * @param 【T32PAT(0xF3C5)】スプライトジェネレータテーブルのアドレス
+ * @param 【LINL32(0xF3AF)】1行の幅(WIDTH文によって設定する値
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_SETT32() using AF, BC, DE, HL, IX, IY {
+	IX = 0x00E9;
+	_CALSLT(IX);
+}
+
+/**
+ * VDPを高解像モードにします。
+ * @type SUB/MSX2
+ * @param 【GRPNAM(0xF3C7)】パターンネームテーブルのアドレス
+ * @param 【GRPCOL(0xF3C9)】カラーテーブルのアドレス
+ * @param 【GRPCGP(0xF3CB)】パターンジェネレータテーブルのアドレス
+ * @param 【GRPATR(0xF3CD)】スプライトアトリビュートテーブルのアドレス
+ * @param 【GRPPAT(0xF3CF)】スプライトジェネレータテーブルのアドレス
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_SETGRP() using AF, BC, DE, HL, IX, IY {
+	IX = 0x00ED;
+	_CALSLT(IX);
+}
+
+/**
+ * VDPをマルチカラーモードにします。
+ * @type SUB/MSX2
+ * @param 【MLTNAM(0xF3DI)】 パターンネームテーブルの先頭アドレス
+ * @param 【MLTCOL(0xF3D3)】 カラーテーブルの先頭アドレス
+ * @param 【MLTCGP(0xF3D5)】 パターンジェネレータテーブルの先頭アドレス
+ * @param 【MLTATR(0xF3D7)】 スプライトアトリビュートテーブルの先頭アドレス
+ * @param 【MLTPAT(0xF3D9)】 スプライトジェネレータテーブルの先頭アドレス
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_SETMLT() using AF, BC, DE, HL, IX, IY {
+	IX = 0x00F1;
+	_CALSLT(IX);
+}
+
+/**
+ * すべてのスプライトを初期化します。
+ * スプライトパターンをヌルに、スプライト番号をスプライト面番号に、
+ * スプライトの色を前景色にします。スプライトの垂直位置は217にセットします。
+ * @type SUB/MSX2
+ * @param 【SCRMOD(0xFCAF)] スクリーンモード
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_CLRSPR() using AF, BC, DE, HL, IX, IY {
+	IX = 0x00F5;
+	_CALSLT(IX);
+}
+
+/**
+ * スプライトジェネレータテーブルの先頭アドレスを返します。
+ * このルーチンはMAINROMの同名のBIOSと同じです。
+ * @type SUB/MSX2
+ * @param A スプライト番号
+ * @using AF, DE, HL
+ */
+inline EXT_CALPAT(A) return HL using AF, DE, HL {
+	IX = 0x00F9;
+	_CALSLT(IX);
+}
+
+/**
+ * スプライトアトリビュートテーブルの開始アドレスを獲得します。
+ * @type SUB/MSX2
+ * @param  A  スプライト番号
+ * @return HL アドレス
+ * @using AF, DE, HL
+ */
+inline EXT_CALATR(A) return HL using AF, DE, HL {
+	IX = 0x00FD;
+	_CALSLT(IX);
+}
+
+/**
+ * 現在のスプライトサイズを返します。このルーチンはMA1NROMの同名のBIOSと同じ。
+ * @type SUB/MSX2
+ * @return A スプライトサイズ(バイト数)
+ *         CYフラグ 16x16のサイズの場合のみセットし、それ以外のときはリセット
+ */
+inline EXT_GSPSIZ() return A {
+	IX = 0x0101;
+	_CALSLT(IX);
+}
+
+/**
+ * キャラクタパターンを返します。
+ * @type SUB/MSX2
+ * @param  A 文字コード
+ * @return 【PATWRK (FC40H)】キャラクタパターン
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_GETPAT(A) using AF, BC, DE, HL, IX, IY {
+	IX = 0x0105;
+	_CALSLT(IX);
+}
+
+/**
+ * VRAMにデータを書き込みます。
+ * @type SUB
+ * @param HL 書き込むVRAMのアドレス(0～0xFFFF)
+ * @param A  書き込むデータ
+ * @using AF
+ */
+inline EXT_WRTVRM(HL, A) using AF {
+	IX = 0x0109;
+	_CALSLT(IX);
+}
+
+/**
+ * VRAMの内容を読み出します。
+ * @type SUB/MSX2
+ * @param  HL 読み出すVRAMのアドレス(0～0xFFFF)
+ * @return A  読み出した値
+ */
+inline EXT_RDVRM(HL) return A {
+	IX = 0x010D;
+	_CALSLT(IX);
+}
+
+/**
+ * 画面の色を変えます。
+ * @type SUB/MSX2
+ * @param A スクリーンモード
+ * @param 【FORCLR(0xF3E9)】前景色
+ * @param 【BAKCLR(0xF3EA)】背景色
+ * @param 【BDRCLR(0xF3EB)] 周辺色
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_CHGCLR(A) using AF, BC, DE, HL, IX, IY {
+	IX = 0x0111;
+	_CALSLT(IX);
+}
+
+/**
+ * 画面をクリアします。
+ * @type SUB/MSX2
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_CLSSUB() using AF, BC, DE, HL, IX, IY {
+	IX = 0x0115;
+	_CALSLT(IX);
+}
+
+/**
+ * ファンクションキーを表示します。
+ * @type SUB/MSX2
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_DSPFNK() using AF, BC, DE, HL, IX, IY {
+	IX = 0x011D;
+	_CALSLT(IX);
+}
+
+/**
+ * VDPのレジスタにデータを書き込みます。
+ * @type SUB/MSX2
+ * @param C VDPのレジスタ番号
+ * @param B 書き込むデータ
+ * @using AF, BC
+ */
+inline EXT_WRTVDP(C,B) using AF, BC {
+	IX = 0x012D;
+	_CALSLT(IX);
+}
+
+/**
+ * VDPのレジスタの内容を接待します。
+ * @type SUB/MSX2
+ * @param A VDPのレジスタ番号(0～9)
+ */
+inline EXT_VDPSTR() return A {
+	IX = 0x0131;
+	_CALSLT(IX);
+}
+
+/**
+ * VRAMのページを切り換えます。
+ * @type SUB/MSX2
+ * @param 【DDPAGE(0xFAF5)】ディスプレイページ番号
+ * @param 【ACPAGE(0xFAF6)】アクティプページ番号
+ * @using AF
+ */
+inline EXT_SETPAG() using AF {
+	IX = 0x013D;
+	_CALSLT(IX);
+}
+
+/**
+ * パレットを初期化します。現在のパレットはVRAMにセーブされています。
+ * @type SUB/MSX2
+ * @using AF, BC, DE
+ */
+inline EXT_INIPLT() using AF, BC, DE {
+	IX = 0x0141;
+	_CALSLT(IX);
+}
+
+/**
+ * パレットをVRAMからリストアします。
+ * @type SUB/MSX2
+ * @using AF, BC, DE
+ */
+inline EXT_RSTPLT() using AF, BC, DE {
+	IX = 0x0145;
+	_CALSLT(IX);
+}
+
+/**
+ * パレットからカラーコードを獲得します。
+ * @type SUB/MSX2
+ * @param A パレット番号(0～15)
+ * @return B 上位4ビットに赤のコード
+ *           下位4ビットに青のコード
+ *         C 下位4ビットに緑のコード
+ * @using AF, DE
+ */
+inline EXT_GETPLT(A) using AF, DE {
+	IX = 0x0149;
+	_CALSLT(IX);
+}
+
+/**
+ * カラーコードをパレットにセットします。
+ * @type SUB/MSX2
+ * @param D パレット番号(0～15)
+ * @param A 上位4ビットに赤のコード
+ *          下位4ビットに青のコード
+ * @param E 下位4ビットに緑のコード
+ * @using AF
+ */
+inline EXT_SETPLT(D, A, E) using AF {
+	IX = 0x014D;
+	_CALSLT(IX);
+}
+
+/**
+ * ブザーを鳴らします
+ * @type SUB/MSX2
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_BEEP() using AF, BC, DE, HL, IX, IY {
+	IX = 0x017D;
+	_CALSLT(IX);
+}
+
+/**
+ * プロンプトを表示します。
+ * @type SUB/MSX2
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_PROMPT() using AF, BC, DE, HL, IX, IY {
+	IX = 0x0181;
+	_CALSLT(IX);
+}
+
+/**
+ * マウス、ライトペンの状態を調べます。
+ * @type SUB/MSX2
+ * @param A 以下のデータを入れてコールします。カッコ内は戻り値です
+ *            8  ライトペンの接続状態を返す(0xFFで有効)
+ *            9  X座標を返す
+ *            10 Y座標を返す
+ *            11 ライトペンスイッチの状態を返す(押されたとき0xFF)
+ *            12 マウスのポートlへの接続状態を返す(0xFFで有効)
+ *            13 X方向のオフセットを返す
+ *            14 Y方向のオフセットを返す
+ *            15 常にO
+ *            16 マウスのポート2への接続状態を返す(0xFFで有効)
+ *            17 X方向のオフセットを返す
+ *            18 Y方向のオフセットを返す
+ *            19 常にO
+ * @return A
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_NEWPAD(A) return A using AF, BC, DE, HL, IX, IY {
+	IX = 0x01AD;
+	_CALSLT(IX);
+}
+
+/**
+ * VDPのモードを変えます。パレットは初期化します。
+ * @type SUB/MSX2
+ * @param A スクリーンモード(0～8)
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline EXT_CHGMDP(A) using AF, BC, DE, HL, IX, IY {
+	IX = 0x01B5;
+	_CALSLT(IX);
+}
+
+/**
+ * グラフィック画面(スクリーンモード5～8) に漢字を表示します。
+ * @type SUB/MSX2
+ * @param BC JIS漢字コード(MSX2は第一水準、MSX2+は第一、第二水準)
+ * @param A 表示モード
+ *          表示モードはBASICのPUTKANJI命令と同様に以下の意味を持つ
+ *           0 16 x 16ドットで表示
+ *           1 偶数番目のドットを表示
+ *           2 奇数番目のドットを表示
+ * @param 【GRPACX(0xFCB7)】X座標
+ * @param 【GRPACY(0xFCB9)】Y座標
+ * @using AF
+ */
+inline EXT_KNJPRT(BC, A) using AF {
+	IX = 0x01BD;
+	_CALSLT(IX);
+}
+
+/**
+ * CLOCK-ICのデータを読み出します。
+ * @type SUB/MSX2
+ * @param C 読み込むCLOCK-ICのレジスタアドレス
+ *              00MMAAAA
+ *                AAAA - アドレス(0～15)
+ *                MM   - モード(0～3)
+ * @return A 読み込んだデータ(下位4ビットのみ有効)
+ */
+inline EXT_REDCLK(C) return A {
+	IX = 0x01F5;
+	_CALSLT(IX);
+}
+
+/**
+ * CLOCK-ICにデータを書き込みます。
+ * @type SUB
+ * @param C 書き込みCLOCK-ICのレジスタアドレス
+ * @param A 書き込むデータ
+ */
+inline EXT_WRTCLK(C,A) {
+	IX = 0x01F9;
+	_CALSLT(IX);
+}

@@ -20,7 +20,7 @@ function activate(context) {
     // context.subscriptions.push(vscode.commands.registerCommand('xsm.commandTest', commandTest));
     context.subscriptions.push(vscode.languages.registerHoverProvider(mode, new XsmHoverProvider(analyzer)));    
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider(mode, new XsmCompletionItemProvider(analyzer), '.'));
-    //context.subscriptions.push(vscode.languages.registerSignatureHelpProvider(mode, new XsmSignatureHelpProvider(analyzer), '(', ','));    
+    context.subscriptions.push(vscode.languages.registerSignatureHelpProvider(mode, new XsmSignatureHelpProvider(analyzer), '(', ','));    
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(mode, new XsmDefinitionProvider(analyzer)));
 
     fileWatcher = vscode.workspace.createFileSystemWatcher("**/*.xsm");
