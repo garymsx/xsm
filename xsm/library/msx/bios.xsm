@@ -295,6 +295,20 @@ inline LDIRMV(HL, DE, BC) using AF, BC, DE, HL, IX, IY {
 }
 
 /**
+ * メモリからVRAMへデータをプロック転送します。
+ * 
+ * @type MAIN/MSX2
+ * @param HL 転送元のRAMアドレス
+ * @param DE 転送先のVRAMアドレス(指定するVRAMのアドレスは全ピットが有効)
+ * @param BC 転送する長さ(バイト数)
+ * @using AF, BC, DE, HL, IX, IY
+ */
+inline LDIRVM(HL, DE, BC) using AF, BC, DE, HL, IX, IY {
+	CALSLT(IX = 0x005C);
+}
+
+/**
+
  * スクリーンモードを変えます。
  * パレットは初期化しません。
  * パレットの初期化が必要なときは、CHGMDP(00D1H/SUB)を使います。
@@ -304,7 +318,7 @@ inline LDIRMV(HL, DE, BC) using AF, BC, DE, HL, IX, IY {
  * @using AF, BC, DE, HL, IX, IY
  */
 inline CHGMOD(A) using AF, BC, DE, HL, IX, IY {
-	CALSLT(IX = 0x005C);
+	CALSLT(IX = 0x005F);
 }
 
 /**
