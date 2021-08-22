@@ -1,0 +1,20 @@
+import "/msx/workarea.xsm";
+import "/msx/bios.xsm";
+import "/msx/extbios.xsm";
+
+// SCREEN 1
+EXT_CHGMDP(A = 1);
+
+for(A = 'A'; A <= 'Z'; A++) {
+    using(AF) {
+        FILVRM(HL = 0x1800, BC = 32 * 24, A);
+    }
+}
+
+// WAIT KEY INPUT
+CHGET();
+
+// SCREEN 0
+EXT_CHGMDP(A = 0);
+
+return;
