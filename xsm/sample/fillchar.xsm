@@ -15,15 +15,16 @@ unsafe {
         START_VPOKE(HL = 0x1800);
 
         // VRAMに書き込み
-        HL = 32 * 24;
-        @ {
-            VPOKE(B);
+        HL = 32 * 24 / 8;
+        do {
+            // 8回繰り返す
+            repeat(8) {
+                VPOKE(B);
+            }
             HL--;
-            if(HL != 0) continue;
-        }
+        } while(HL != 0);
         ei;
     }
-
 }
 
 // WAIT KEY INPUT
