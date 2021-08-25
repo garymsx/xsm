@@ -1,6 +1,8 @@
 # Z80用 クロスアセンブラ XSM マニュアル
 
 ## 更新情報
+- ver 0.15
+    - 各種バグ修正
 - ver 0.14
     - do ～ while文の追加
     - else if ～を処理できないバグの修正(Thanks, jannone.)
