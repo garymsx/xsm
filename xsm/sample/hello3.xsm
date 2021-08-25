@@ -1,0 +1,215 @@
+import "/lang/mul.xsm";
+import "/lang/mulw.xsm";
+import "/lang/div.xsm";
+import "/lang/divw.xsm";
+
+import "/msx/workarea.xsm";
+import "/msx/bios.xsm";
+import "/msx/extbios.xsm";
+
+// ポート番号を取得
+VDP_INIT();
+
+// SCREEN 1
+EXT_CHGMDP(A = 1);
+unsafe {
+    FORCLR = 15;
+    BAKCLR = 0;
+    BDRCLR = 0;
+    EXT_CHGCLR(A = 1);
+}
+
+byte[] patternH = bin(
+          "11101110"
+        + "01000100"
+        + "01000100"
+        + "01111100"
+        + "01000100"
+        + "01000100"
+        + "11101110"
+        + "00000000"
+    );
+
+byte[] patternW = bin(
+          "11101110"
+        + "01000100"
+        + "01000100"
+        + "01010100"
+        + "01010100"
+        + "01010100"
+        + "00101000"
+        + "00000000"
+    );
+
+SET_PATTERN(A = 'H', DE = patternH); // Hのパターンを書き換える
+SET_PATTERN(A = 'W', DE = patternW); // Wのパターンを書き換える
+SET_COLOR( 9, 0x70); // Hを水色にする
+SET_COLOR(10, 0x80); // Wを赤色にする
+
+LOCATE( 7,5);PRINT("   Hello World   ");
+LOCATE( 7,6);PRINT("xsm sample program");
+LOCATE( 7,8);PRINT(" -- push space -- ");
+
+// WAIT SPACE KEY
+do {
+    A = GTTRIG(A = 0);
+} while(A == 0);
+
+// SCREEN 0
+EXT_CHGMDP(A = 0);
+KILBUF();
+
+return;
+
+// VDPポート番号
+byte VDP_R0;
+byte VDP_W0;
+byte VDP_R1;
+byte VDP_W1;
+byte VDP_R2;
+byte VDP_W3;
+
+function VDP_INIT() {
+    // MAIN ROMからVDPのポート番号を取得し保存
+    A = RDSLT(A = EXPTBL[0], HL = &VDP_DR);
+    VDP_R0 = A;
+    A++;
+    VDP_R1 = A;
+    A++;
+    VDP_R2 = A;
+
+    A = RDSLT(A = EXPTBL[0], HL = &VDP_DW);
+    VDP_W0 = A;
+    A++;
+    VDP_W1 = A;
+    A++;A++;
+    VDP_W3 = A;
+}
+
+/**
+ * VDPへ書き込み
+ * @param D レジスタ番号
+ * @param E 書き込むデータ
+ * @remark VDPアクセス中は割り込み禁止すること
+ */
+function VDP(D,E) using A, C {
+    A = VDP_W1;
+    C = A;
+    out *C, E;
+    out *C, D;
+}
+
+/**
+ * 連続したVRAMへの書き込み開始宣言
+ * @type MSX
+ * @param HL レジスタ番号
+ * @return C VRAM書き込み用のポート番号を返す
+ * @using A,D,E
+ * @remark
+ *   VDPアクセス中は割り込み禁止すること
+ *   CLOSEはない
+ */
+function START_VPOKE(HL) return C using A,D,E {
+    // bit14-16のセット
+    VDP(D = 14 + 0x80, 0); // SCREEN1だと意味がなさそうなのだけど一応
+
+    // bit0-7のセット
+    A = VDP_W1;
+    C = A;
+    out *C,L;
+
+    // bit8-13を書き込みモードでセット
+    A = H;
+    A &= 0x3f; //  bit6-7を00でクリア
+    A |= 0x40; //  bit6-7に01をセット
+    out *C,A;
+
+    // VRAM書き込み用ポート
+    A = VDP_W0;
+    C = A;
+
+    return C;
+}
+
+/**
+ * START_VPOKEしたアドレスへ書き込む
+ * @type MSX
+ * @param value 書き込むデータ
+ * @remark
+ *   わかり易くするためにinline化しただけ。
+ *   Cレジスタはポート番号が設定済みであること。
+ *   VDPアクセス中は割り込み禁止すること。
+ */
+inline VPOKE(value) {
+    out *C, value;
+}
+
+/**
+ * 文字を指定座標から出力出来る準備をする
+ * @param B X座標
+ * @param C Y座標
+ */
+function LOCATE(B,C) {
+    using(AF, HL) {
+        unsafe {
+            HL = C;
+            HL *= 32;
+            HL += B;
+            HL += 0x1800;
+            START_VPOKE(HL);
+        }
+    }
+}
+
+/**
+ * LOCATEで指定した座標に文字列を出力する
+ * @param HL 文字列へのアドレス
+ * @param B  文字列の長さ(255バイトまで)
+ * @remarks
+ *    Bレジスタの長さ、もしくは'\0'で終了する
+ */
+function PRINT(HL, B = 255) {
+    loop(B) {
+        A = *HL;
+        if(A == 0) break;
+        VPOKE(A);
+        HL++;
+    }
+}
+
+/**
+ * キャラクタ A を HLのパターンにする
+ * @param A  書き換えたいキャラクタ
+ * @param DE パターンデータのアドレス(8バイト)
+ */
+function SET_PATTERN(A, DE) {
+    unsafe {
+        HL = A;
+        HL *= 8;
+    }
+
+    using(DE) {
+        START_VPOKE(HL);
+    }
+
+    loop(8) {
+        A = *DE;
+        VPOKE(A);
+        DE++;
+    }
+}
+
+/**
+ * カラーテーブルのA番の色を変える
+ * @param A カラーテーブル番号
+ * @param B 色(上位4bit前景色、下位4bit背景色)
+ */
+function SET_COLOR(A, B) {
+    unsafe {
+        HL = A;
+        HL += 0x2000;
+    }
+
+    START_VPOKE(HL);
+    VPOKE(B);
+}
