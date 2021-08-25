@@ -735,7 +735,7 @@ inline GTSTCK(A) return A using AF, BC, DE, HL, IX, IY {
  *           FFH トリガボタンは押されている
  * @using AF
  */
-inline GTTRIG(A) using AF {
+inline GTTRIG(A) return A using AF {
 	CALSLT(IX = 0x00D8);
 }
 
