@@ -40,9 +40,12 @@ unsafe {
     LOAD_SPRITE(sprite, sizeof(sprite) - 3);
 
     // スプライト表示
-    B = sprite[96];PUT_SPRITE(0, 1, 112, 95);
-    B = sprite[97];PUT_SPRITE(1, 8, 112, 95);
-    B = sprite[98];PUT_SPRITE(2,15, 112, 95);
+    B = sprite[96]; // スプライトの色
+    PUT_SPRITE(0, B, 112, 95);
+    B = sprite[97];
+    PUT_SPRITE(1, B, 112, 95);
+    B = sprite[98];
+    PUT_SPRITE(2, B, 112, 95);
     ei;
 
     // WAIT SPACE KEY
@@ -51,7 +54,7 @@ unsafe {
     x = 16;
     y = 16;
     do {
-        A = GTSTCK(A = 0);
+        A = GTSTCK(A = 0); // カーソルキーの状態
         switch(A) {
             case(1) {if(y >  0) y--;}
             case(3) {if(x < 48) x++;}
@@ -59,7 +62,7 @@ unsafe {
             case(7) {if(x >  0) x--;}
         }
         VIEW_MAP(x,y);
-        A = GTTRIG(A = 0);
+        A = GTTRIG(A = 0); // スペースキーで終了
     } while(A == 0);
 
     // SCREEN 0
@@ -111,7 +114,7 @@ function VIEW_MAP(byte vx, byte vy) {
                     HL++;
                     *DE = *HL;
                     using(HL) {
-                        DE += 31;
+                        DE += 31; // 次の行(+32じゃないのはDE++が1回実行されているから)
                     }
                     HL++;
                     *DE = *HL;
@@ -304,11 +307,11 @@ function PUT_SPRITE(A,B,D,E) using AF,BC,DE,HL {
             using(AF,DE) {
                 START_VPOKE(HL);
             }
-            VPOKE(E);
-            VPOKE(D);
-            A << 2;    // 16x16モードの時
-            VPOKE(A);
-            VPOKE(B);
+            VPOKE(E); // X
+            VPOKE(D); // Y
+            A << 2;   // 16x16モードの時はスプライト番号を4倍しなければならない
+            VPOKE(A); // スプライト番号
+            VPOKE(B); // 色
         }
     }
 }
