@@ -40,11 +40,9 @@ unsafe {
     LOAD_SPRITE(sprite, sizeof(sprite) - 3);
 
     // スプライト表示
-    debug on;
     B = sprite[96];PUT_SPRITE(0, 1, 112, 95);
     B = sprite[97];PUT_SPRITE(1, 8, 112, 95);
     B = sprite[98];PUT_SPRITE(2,15, 112, 95);
-    debug off;
     ei;
 
     // WAIT SPACE KEY
