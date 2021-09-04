@@ -4,6 +4,7 @@ const XsmCompletionItemProvider = require('./XsmCompletionItemProvider');
 const XsmSignatureHelpProvider = require('./XsmSignatureHelpProvider');
 const XsmHoverProvider = require('./XsmHoverProvider');
 const XsmDefinitionProvider = require('./XsmDefinitionProvider');
+const XsmUtils  = require('./XsmUtils');
 
 const XsmAnalyzer = require('./XsmAnalyzer');
 
@@ -32,8 +33,10 @@ function activate(context) {
         console.log("onDidCreate");
         analyzeUpdate(uri);
     });
-    fileWatcher.onDidDelete(() => {
+    fileWatcher.onDidDelete(uri => {
         console.log("onDidDelete");
+        const path = XsmUtils.getPath(uri);
+        analyzer.clearMembers(path);
     });
 
     analyzeUpdate();

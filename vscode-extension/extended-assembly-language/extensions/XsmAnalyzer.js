@@ -21,6 +21,10 @@ module.exports = class XsmAnalyzer {
 
     analyzePass1(uri) {
         const path = XsmUtils.getPath(uri);
+
+        // 対象ファイル初期化
+        this.clearMembers(path);
+
         if(this.files.indexOf(path) == -1) {
             this.files.push(path);
             //console.log("workspace:" + XsmUtils.getWorkspaceFolderPath(uri));
@@ -30,8 +34,6 @@ module.exports = class XsmAnalyzer {
             console.log("update   :" + path);
         }
 
-        // 対象ファイル初期化
-        this.clearMembers(path);
         const parser = new XsmParser();
         this.parsers[path] = parser;
         return parser.parse(uri).then(() => {
@@ -374,8 +376,10 @@ module.exports = class XsmAnalyzer {
      * @param path 
      */
     clearMembers(path) {
-        this.members = this.members.filter(member => member.path != path);
-        this.imports = this.imports.filter(imp    => imp.path != path);
+        this.members = this.members.filter(it => it.path != path);
+        this.imports = this.imports.filter(it => it.path != path);
+        delete this.parsers[path];
+        this.files   = this.files.filter(it => it != path);
     }
 
     /**

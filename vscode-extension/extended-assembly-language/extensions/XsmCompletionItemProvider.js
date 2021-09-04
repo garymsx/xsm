@@ -42,6 +42,17 @@ module.exports = class XsmCompletionItemProvider {
             }
 
             const completionList = this.createCompletionListFromMember(members);
+
+            // importサポート
+            this.analyzer.files.forEach(it => {
+                let item =  {
+                    label: "import \"" + it + "\"",
+                    detail: it,
+                    documentation: "",
+                    kind: vscode.CompletionItemKind.Value
+                };
+                completionList.push(item);
+            });
     
             return Promise.resolve(new vscode.CompletionList(completionList, false));
 

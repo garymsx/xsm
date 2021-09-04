@@ -92,32 +92,32 @@
   |string|文字列参照型(2バイト)|
     - 配列
     ```
-    byte[2] hoge;
-    byte[2][4] hoge;
+    byte[2] foo;
+    byte[2][4] foo;
     ```
 
     - 初期化
   
     初期化はプログラムロード時に1回だけ行われます。
     ```
-    char hoge;
-    byte hoge = 1;
-    int[2] hoge = {1,2};
-    byte[2][4] hoge = {{1,2,3,4},{5,6,7,8}};
-    byte[] hoge = {1,2};
-    char[] hoge = "ABCDEFG";            // 7文字+NULL文字で8バイト 
-    char[][] hoge = {"ABCDEFG", "ABC"}; // 2 x 8 = 16バイト 一番長い文字列の長さに合わせます
-    string hoge = "ABCDEFG";            // stringは参照型なので2バイトです。以下のような構造を持ちます。
-                                        // hoge       : DW hoge_string
-                                        // hoge_string: DC "ABCDEFG"
+    char foo;
+    byte foo = 1;
+    int[2] foo = {1,2};
+    byte[2][4] foo = {{1,2,3,4},{5,6,7,8}};
+    byte[] foo = {1,2};
+    char[] foo = "ABCDEFG";            // 7文字+NULL文字で8バイト 
+    char[][] foo = {"ABCDEFG", "ABC"}; // 2 x 8 = 16バイト 一番長い文字列の長さに合わせます
+    string foo = "ABCDEFG";            // stringは参照型なので2バイトです。以下のような構造を持ちます。
+                                        // foo       : DW foo_string
+                                        // foo_string: DC "ABCDEFG"
     ```
 
 - 定数
   
     ```
-    const int HOGE = 0x0001;    // 数値はプログラム中で置換される
-    const string HOGE  = "ABC"; // "ABC"はメモリに配置されます。
-    const string HOGE2 = "ABC"; // HOGEと同じなのでHOGEが再利用されます。間違って書き換えると参照個所全部書き換わります。
+    const int foo = 0x0001;    // 数値はプログラム中で置換される
+    const string foo  = "ABC"; // "ABC"はメモリに配置されます。
+    const string foo2 = "ABC"; // fooと同じなのでfooが再利用されます。間違って書き換えると参照個所全部書き換わります。
     ```
     定数は配列が使えません。
 
@@ -130,9 +130,9 @@
     また、投影先のアドレスを直接指定することも可能です。
 
     ```
-    shadow int hoge;         // shadowは初期値を設定することが出来ません  
-    shadow char[256] hoge;
-    shadow(0xd000) char[256] hoge; // 直接メモリにマッピングすることも可能です
+    shadow int foo;         // shadowは初期値を設定することが出来ません  
+    shadow char[256] foo;
+    shadow(0xd000) char[256] foo; // 直接メモリにマッピングすることも可能です
     ```
 
     以下の記述でshadowデータを一括で初期化できます。アドレス指定された投影型は対象外です。
@@ -144,15 +144,15 @@
 
 - 定義
     ```
-    struct HOGE {
-        byte fuga1;
-        int  fuga2;
+    struct foo {
+        byte bar1;
+        int  bar2;
     } 
     ```
 - 宣言と初期化  
     ```
-    HOGE hoge = {1,2};
-    HOGE[] hoge = {
+    foo foo = {1,2};
+    foo[] foo = {
           {1,2}
         , {3,4}
     };
@@ -168,10 +168,10 @@
   A = 1;          // レジスタへの代入
   A = 5 + 2 * 8;  // アセンブル時に値が確定するのであれば計算式を書くことが可能です
   *HL = 1;        // HLの差すメモリへの代入
-  hoge = A;       // メモリへ直接代入
-  A = hoge.fuga1; // 構造体の参照
-  A = hoge[2];    // アセンブル時にアドレスが確定している場合は配列が書けます
-  HL = &hoge;     // hogeのアドレスを取得します
+  foo = A;       // メモリへ直接代入
+  A = foo.bar1; // 構造体の参照
+  A = foo[2];    // アセンブル時にアドレスが確定している場合は配列が書けます
+  HL = &foo;     // fooのアドレスを取得します
   ```
 
 - 演算代入式(+= -= *= /= %=)
@@ -199,7 +199,7 @@
   ```
   A++;
   HL--;
-  hoge++;
+  foo++;
   ```  
 
 - シフト、ローテーション(>> << >>> <<<)
@@ -219,11 +219,11 @@
 
 - 関数呼び出し
   ```
-  A = hoge(B,2);
-  A = fuga("Hello World\n");
+  A = foo(B,2);
+  A = bar("Hello World\n");
   // または
-  A = hoge(B, C = 2); // 明示的に代入を表記することで壊れるレジスタが分かるだけ。
-  A = fuga(HL = "Hello World\n");
+  A = foo(B, C = 2); // 明示的に代入を表記することで壊れるレジスタが分かるだけ。
+  A = bar(HL = "Hello World\n");
   ```
 
 ### 関数定義
@@ -234,38 +234,38 @@
   // パラメータがレジスタ、もしくはメモリ渡しの場合
   // returnは応答に使用するレジスタ、usingは呼び出しによって壊れるレジスタを定義します
   // ここのusingは未初期化のレジスタを使用時に警告を出すことが目的なので無くてもかまいません。
-  function hoge(BC, string fuga1, string fuga2) return A using B,C {
+  function foo(BC, string bar1, string bar2) return A using B,C {
     ...
   }
   
   // パラメータがスタック渡しの場合
-  function hoge(string fuga,...) { // "..."でスタックに展開されます
+  function foo(string bar,...) { // "..."でスタックに展開されます
     loop(B) {    // Bはパラメータ数が設定されます
         pop hl;  // パラメータを全て取り出さないと暴走します
     }
   }
   
   // デフォルト値
-  function hoge(C = 0x05); // パラメータ省略時の値を指定
+  function foo(C = 0x05); // パラメータ省略時の値を指定
 
   // BIOSや常駐処理を呼ぶ際は以下のように定義できます。
-  function hoge(C) = 0xe000; // アドレスを指定
+  function foo(C) = 0xe000; // アドレスを指定
   ```
 
 ### ラベルとジャンプ
 
 - ラベル
   ```
-  hoge:
+  foo:
   ```
 - goto
   ```
-  goto hoge;
+  goto foo;
   ```
 
 - call
   ```
-  call hoge;
+  call foo;
   ```
 
 - return
@@ -275,7 +275,7 @@
   return;
   // 関数に戻り値が設定されている場合は引数を持ちます。
   return 1;
-  // function hoge() return A; と定義されていれば return 1 は以下のように展開されます。
+  // function foo() return A; と定義されていれば return 1 は以下のように展開されます。
   LD A,1
   RET
   // return A; のようになった場合、LD A,Aは省略されます
@@ -343,8 +343,8 @@
 
   ```
   // また、const値と併用して条件付きコンパイルのようなことが可能です。
-  const byte hoge = 1;
-  if(hoge == 1) {        // ビルド時に結果が決まっているのでif文は生成されない
+  const byte foo = 1;
+  if(foo == 1) {        // ビルド時に結果が決まっているのでif文は生成されない
     // このブロックはビルドされる
   } else {
     // このブロックのコードはビルドされない
@@ -425,8 +425,8 @@
 
   フラグの内容が成立している場合、ジャンプ命令を実行します。
   ```
-  on $Z  goto hogelabel;  // ジャンプ命令
-  on $C  call hogelabel;  // サブルーチンコール
+  on $Z  goto foolabel;  // ジャンプ命令
+  on $C  call foolabel;  // サブルーチンコール
   on $NZ return;          // 復帰
   ```
 
@@ -471,33 +471,40 @@
 
 ### 内部関数
 
-- データ定義関数(bin/qtr/hex/from)
-
+- データ定義関数(bin/qtr/hex)
   ```
-  byte[] hoge  = bin("00000000"         // 2進数表記
+  byte[] foo  = bin("00000000"         // 2進数表記
                    + "11,11,11,11");    // 数字以外は無視されます
-  byte[] hoge = qtr("0123,0123");       // 4進数
-  byte[] hoge = hex("FF,FF");           // 16進数
-  byte[] hoge = from("image.dat");      // ファイル読み込み
+  byte[] foo = qtr("0123,0123");       // 4進数
+  byte[] foo = hex("FF,FF");           // 16進数
+  ```
+
+- ファイル取り込み関数(from)
+  様々な形式のファイルを読み込み、プログラムから扱いやすい形に変換します。  
+  詳しくは[from関数について](from/from.md)を参照してください。
+  ```
+  byte[] foo = from("data.bin");         // ファイルをそのままfooに格納
+  byte[] foo = from("tile.bmp", sc1);    // BMP(Indexed Color)形式の画像をSCREEN1のVRAM形式に変換
+  byte[] foo = from("map.tmx", tmxmap);  // Tiled Map Editorの出力するマップデータを読み込む
   ```
 
 - 分離関数(high/low)
   ```
-  int hoge = 0x1234;
-  A = high(hoge);     // Aには0x12が入る
-  A = low(hoge);      // Aには0x23が入る
+  int foo = 0x1234;
+  A = high(foo);     // Aには0x12が入る
+  A = low(foo);      // Aには0x23が入る
   ```
 
 - サイズ取得関数(sizeof)
   ```
-  int[10] hoge;
-  A = sizeof(hoge);  // Aには20が入る
+  int[10] foo;
+  A = sizeof(foo);  // Aには20が入る
   ```
 
 - 要素数取得関数(length)
   ```
-  int[10] hoge;
-  A = length(hoge);  // Aには10が入る
+  int[10] foo;
+  A = length(foo);  // Aには10が入る
   ```
 
 - オフセット関数(offset)
@@ -505,23 +512,23 @@
   構造体メンバーの先頭からのオフセット値を求めます。構造体に配列を使う場合に必須になってくる機能です。
 
   ```
-  // 例 hoge[1].hoge2のアドレスを求める
-  struct HOGE {
-    byte  fuga1;
-    byte  fuga2;
+  // 例 foo[1].foo2のアドレスを求める
+  struct foo {
+    byte  bar1;
+    byte  bar2;
   };
-  HOGE[2] hoge;
-  HL = hoge;                // hoge[0]のアドレスを取得
-  BC = sizeof(HOGE);        // HOGEの構造体サイズを求める
-  HL += BC;                 // hoge[1]のアドレスが求まる
-  BC = offset(HOGE.fuga2);  // BCには2が入る
-  HL += BC;                 // hoge[1].fuga2の先頭アドレス
+  foo[2] foo;
+  HL = foo;                // foo[0]のアドレスを取得
+  BC = sizeof(foo);        // fooの構造体サイズを求める
+  HL += BC;                 // foo[1]のアドレスが求まる
+  BC = offset(foo.bar2);  // BCには2が入る
+  HL += BC;                 // foo[1].bar2の先頭アドレス
   ```
 
 - 半角変換関数(half)
   
   ```
-  string hoge = half("あいうえお"); // MSXのひらがなASCIIコードに変換されます。
+  string foo = half("あいうえお"); // MSXのひらがなASCIIコードに変換されます。
   ```
 
 - ビット判定関数(set/res)
@@ -535,7 +542,7 @@
 - 型名取得
   ```
   // 型名を文字列で取得します。inline関数の判定などで使えます。
-  inline hoge(param) {
+  inline foo(param) {
     if(typename(param) == "string") info("文字です"); 
     if(typename(param) == "int")    info("数値です");     // リテラル数値指定は全てintになります。
     if(typename(param) == "A")      info("レジスタです");  // レジスタ
@@ -648,15 +655,15 @@
   ```
   // パラメータは呼び出し時に使用箇所に埋め込まれます。
   // returnでマクロを終了します。後続のコードは出力されません。
-  inline hoge(fuga) return A {
-    if(fuga == 1) {a = 10;return a;}
-    if(fuga == 2) {a = 20;return a;}
+  inline foo(bar) return A {
+    if(bar == 1) {a = 10;return a;}
+    if(bar == 2) {a = 20;return a;}
     ...
   }
   
   // このマクロは以下のように展開されます
-  hoge(1); // -> a = 10;
-  hoge(2); // -> a = 20;
+  foo(1); // -> a = 10;
+  foo(2); // -> a = 20;
   ```
   
 - repeat
@@ -691,8 +698,8 @@
 - dc
   ```
   // 通常の文字データと違い、終了文字"\0"は埋め込まれません
-  dc "HOGE HOGE\n"; // エスケープシーケンスは処理されます
-  dc `HOGE HOGE\n`; // エスケープシーケンスは処理されません
+  dc "foo foo\n"; // エスケープシーケンスは処理されます
+  dc `foo foo\n`; // エスケープシーケンスは処理されません
   ```  
 
 ### システム定数、システムラベル
@@ -725,15 +732,15 @@
   ```
 - import
   ```
-  import "hoge.xsm";                  // 外部ファイルを取り込みます。取り込まれたファイルはその場に展開されずに後部に追加されます。
-  import "hoge.xsm", 0x2000;          // アドレス指定付きで読み込みます、orgと同じです。
-  import "hoge.xsm", 0x8000, shadow;  // プログラム全体を指定アドレスにshadowとして読み込みます。これで読み込まれたプログラムはバイナリに含まれることはありません。
+  import "foo.xsm";                  // 外部ファイルを取り込みます。取り込まれたファイルはその場に展開されずに後部に追加されます。
+  import "foo.xsm", 0x2000;          // アドレス指定付きで読み込みます、orgと同じです。
+  import "foo.xsm", 0x8000, shadow;  // プログラム全体を指定アドレスにshadowとして読み込みます。これで読み込まれたプログラムはバイナリに含まれることはありません。
                                       // 常駐プログラムを呼ぶ場合に使います。
   ```
 
 - include
   ```
-  include "hoge.xsm";                 // 外部ファイルを取り込みその場に挿入されます。
+  include "foo.xsm";                 // 外部ファイルを取り込みその場に挿入されます。
                                       // importで足りる場合はimportを使ってください。
   ```
 
