@@ -1,0 +1,341 @@
+import "/lang/mul.xsm";
+import "/lang/mulw.xsm";
+import "/lang/div.xsm";
+import "/lang/divw.xsm";
+
+import "/msx/workarea.xsm";
+import "/msx/bios.xsm";
+import "/msx/extbios.xsm";
+
+// ポート番号を取得
+VDP_INIT();
+
+// SCREEN 1
+EXT_CHGMDP(A = 1);
+unsafe {
+    FORCLR = 15;
+    BAKCLR = 0;
+    BDRCLR = 0;
+    EXT_CHGCLR(A = 1);
+}
+SETGRP();
+CLRSPR();
+
+// フォント読み込み
+byte[] font   = from("ff2font.bmp"  , sc2);
+byte[] sprite = from("ff2sprite.bmp", sp16);
+byte[] tile   = from("ff2tile.tmx"  , tmx, tmxtile2);
+byte[] map    = from("ff2.tmx"      , tmx, tmxmap);
+
+unsafe {
+    di;
+    A = RG1SAV;
+    A |= 0b10; // 16x16スプライト
+    VDP(0x1 + 0x80, E = A);
+    // BG
+    LOAD_PATTERN(font                       , sizeof(font)   - 0x800);
+    LOAD_COLOR  (font + sizeof(font) - 0x800, 0x800);
+
+    // スプライト
+    LOAD_SPRITE(sprite, sizeof(sprite) - 3);
+
+    // スプライト表示
+    debug on;
+    B = sprite[96];PUT_SPRITE(0, 1, 112, 95);
+    B = sprite[97];PUT_SPRITE(1, 8, 112, 95);
+    B = sprite[98];PUT_SPRITE(2,15, 112, 95);
+    debug off;
+    ei;
+
+    // WAIT SPACE KEY
+    shadow byte x;
+    shadow byte y;
+    x = 16;
+    y = 16;
+    do {
+        A = GTSTCK(A = 0);
+        switch(A) {
+            case(1) {if(y >  0) y--;}
+            case(3) {if(x < 48) x++;}
+            case(5) {if(y < 48) y++;}
+            case(7) {if(x >  0) x--;}
+        }
+        VIEW_MAP(x,y);
+        A = GTTRIG(A = 0);
+    } while(A == 0);
+
+    // SCREEN 0
+    EXT_CHGMDP(A = 0);
+    KILBUF();
+}
+
+return;
+
+function VIEW_MAP(byte vx, byte vy) {
+    shadow byte x;
+    shadow byte y;
+    shadow byte[32][24] mapBuf; // 2x2のタイルデータを使ってマップを展開するバッファ
+
+    // mapBufに展開
+    unsafe(BC) {
+        for(y = 0; y < 12; y++) {
+            HL = vy;
+            HL += y;
+            HL *= 64; // マップ横サイズ
+            HL += vx;
+            HL += map;
+            for(x = 0; x < 16; x++) {
+                // mapBufの書き込み先の先頭アドレスを求める
+                using(HL) {
+                    HL = y;
+                    HL << 6; // * 64
+                    HL += mapBuf;
+                    using(HL) {
+                        HL = x;
+                        HL << 1; // *  2
+                        DE = HL;
+                    }
+                    HL += DE;
+                    ex DE,HL;
+                }
+
+                // MAPからタイル番号を取得
+                A = *HL;
+                // タイル番号から対応するパターンに変換
+                using(HL) {
+                    HL = tile;
+                    A << 2;
+                    HL += A;
+
+                    // mapBufに 2x2のタイルを書き込む
+                    *DE = *HL;
+                    DE++;
+                    HL++;
+                    *DE = *HL;
+                    using(HL) {
+                        DE += 31;
+                    }
+                    HL++;
+                    *DE = *HL;
+                    DE++;
+                    HL++;
+                    *DE = *HL;
+                    HL++;
+                }
+                HL++;
+            }
+        }
+    }
+
+    // mapBufを表示
+    di;
+    HL = mapBuf;
+    for(A = 0; A < 24; A++) {
+        LOCATE(0,A);
+        PRINT(HL, 32);
+        HL += 32;
+    }
+    ei;
+}
+
+// VDPポート番号
+byte VDP_R0; // VRAM読み込み用
+byte VDP_W0; // VRAM書き込み用
+byte VDP_R1;
+byte VDP_W1; // レジスタ書き込み用
+byte VDP_R2;
+byte VDP_W3;
+
+function VDP_INIT() {
+    // MAIN ROMからVDPのポート番号を取得し保存
+    A = RDSLT(A = EXPTBL[0], HL = &VDP_DR);
+    VDP_R0 = A;
+    A++;
+    VDP_R1 = A;
+    A++;
+    VDP_R2 = A;
+
+    A = RDSLT(A = EXPTBL[0], HL = &VDP_DW);
+    VDP_W0 = A;
+    A++;
+    VDP_W1 = A;
+    A++;A++;
+    VDP_W3 = A;
+}
+
+/**
+ * VDPへ書き込み
+ * @param D レジスタ番号
+ * @param E 書き込むデータ
+ * @remark VDPアクセス中は割り込み禁止すること
+ */
+function VDP(D,E) using A, C {
+    A = VDP_W1;
+    C = A;
+    out *C, E;
+    out *C, D;
+}
+
+/**
+ * 連続したVRAMへの書き込み開始宣言
+ * @type MSX
+ * @param HL レジスタ番号
+ * @return C VRAM書き込み用のポート番号を返す
+ * @using A,D,E
+ * @remark
+ *   VDPアクセス中は割り込み禁止すること
+ *   CLOSEはない
+ */
+function START_VPOKE(HL) return C using A,D,E {
+    // bit14-16のセット
+    VDP(D = 14 + 0x80, 0); // SCREEN1だと意味がなさそうなのだけど一応
+
+    // bit0-7のセット
+    A = VDP_W1;
+    C = A;
+    out *C,L;
+
+    // bit8-13を書き込みモードでセット
+    A = H;
+    A &= 0x3f; //  bit6-7を00でクリア
+    A |= 0x40; //  bit6-7に01をセット
+    out *C,A;
+
+    // VRAM書き込み用ポート
+    A = VDP_W0;
+    C = A;
+
+    return C;
+}
+
+/**
+ * START_VPOKEしたアドレスへ書き込む
+ * @type MSX
+ * @param value 書き込むデータ
+ * @remark
+ *   わかり易くするためにinline化しただけ。
+ *   Cレジスタはポート番号が設定済みであること。
+ *   VDPアクセス中は割り込み禁止すること。
+ */
+inline VPOKE(value) {
+    out *C, value;
+}
+
+/**
+ * 文字を指定座標から出力出来る準備をする
+ * @param B X座標
+ * @param C Y座標
+ */
+function LOCATE(B,C) {
+    using(AF, HL) {
+        unsafe {
+            HL = C;
+            HL *= 32;
+            HL += B;
+            HL += 0x1800;
+            START_VPOKE(HL);
+        }
+    }
+}
+
+/**
+ * LOCATEで指定した座標に文字列を出力する
+ * @param HL 文字列へのアドレス
+ * @param B  文字列の長さ(255バイトまで)
+ * @remarks
+ *    Bレジスタの長さ、もしくは'\0'で終了する
+ */
+function PRINT(HL, B = 255) {
+    using(AF,HL) {
+        loop(B) {
+            A = *HL;
+            if(A == 0) break;
+            VPOKE(A);
+            HL++;
+        }
+    }
+}
+
+/**
+ * パターンデータを設定する
+ * @param DE パターンデータのアドレス
+ * @param BC 読み込むサイズ
+ * @using AF,BC,DE,HL
+ */
+function LOAD_PATTERN(DE, BC) using AF,BC,DE,HL {
+    MEM_TO_VRAM(HL =      0, DE, BC);
+    MEM_TO_VRAM(HL = 0x0800, DE, BC);
+    MEM_TO_VRAM(HL = 0x1000, DE, BC);
+}
+
+/**
+ * カラーテーブルを設定する
+ * @param DE パターンデータのアドレス
+ * @param BC 読み込むサイズ
+ * @using AF,BC,DE,HL
+ */
+function LOAD_COLOR(DE, BC) using AF,BC,DE,HL {
+    MEM_TO_VRAM(HL = 0x2000, DE, BC);
+    MEM_TO_VRAM(HL = 0x2800, DE, BC);
+    MEM_TO_VRAM(HL = 0x3000, DE, BC);
+}
+
+/**
+ * スプライトを設定する
+ * @param DE スプライトデータのアドレス
+ * @param BC 読み込むサイズ
+ * @using AF,BC,DE,HL
+ */
+function LOAD_SPRITE(DE, BC) using AF,BC,DE,HL {
+    MEM_TO_VRAM(HL = 0x3800, DE, BC);
+}
+
+/**
+ * スプライトを表示する
+ * @param A = スプライト番号
+ * @param B = 色コード
+ * @param D = X
+ * @param E = Y
+ */
+function PUT_SPRITE(A,B,D,E) using AF,BC,DE,HL {
+    using(AF,BC,DE,HL) {
+        unsafe {
+            HL = A;
+            HL << 2;
+            HL += 0x1b00;
+            using(AF,DE) {
+                START_VPOKE(HL);
+            }
+            VPOKE(E);
+            VPOKE(D);
+            A << 2;    // 16x16モードの時
+            VPOKE(A);
+            VPOKE(B);
+        }
+    }
+}
+
+/**
+ * VRAMにメモリを転送する
+ * @param HL VRAMアドレス
+ * @param DE メモリアドレス
+ * @param BC 転送サイズ
+ */
+function MEM_TO_VRAM(HL, DE, BC) {
+    using(AF,BC,DE,HL) {
+        using(BC,DE) {
+            START_VPOKE(HL);
+        }
+
+        unsafe {
+            HL = BC;
+            C  = VDP_W0;
+            do {
+                A = *DE;
+                VPOKE(A);
+                DE++;
+                HL--;
+            } while(HL != 0)
+        }
+    }
+}
