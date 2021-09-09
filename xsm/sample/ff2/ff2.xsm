@@ -7,72 +7,81 @@ import "/msx/workarea.xsm";
 import "/msx/bios.xsm";
 import "/msx/extbios.xsm";
 
-// ポート番号を取得
-VDP_INIT();
-
-// SCREEN 1
-EXT_CHGMDP(A = 1);
-unsafe {
-    FORCLR = 15;
-    BAKCLR = 0;
-    BDRCLR = 0;
-    EXT_CHGCLR(A = 1);
-}
-SETGRP();
-CLRSPR();
+// このコメントを解除するとROM化出来ます
+/*
+org 0x4000;
+org 0x8000,shadow;
+dc @"AB";
+dw main,0,0,0;
+db 0,0,0,0,0,0;
+*/
 
 // フォント読み込み
 byte[] font   = from("ff2font.bmp"  , sc2);
 byte[] sprite = from("ff2sprite.bmp", sp16);
-byte[] tile   = from("ff2tile.tmx"  , tmx, tmxtile2);
-byte[] map    = from("ff2.tmx"      , tmx, tmxmap);
+byte[] tile   = from("ff2tile.tmx"  , tmxmap2);
+byte[] map    = from("ff2.tmx"      , tmxmap);
 
-unsafe {
-    di;
-    A = RG1SAV;
-    A |= 0b10; // 16x16スプライト
-    VDP(0x1 + 0x80, E = A);
-    // BG
-    LOAD_PATTERN(font                       , sizeof(font)   - 0x800);
-    LOAD_COLOR  (font + sizeof(font) - 0x800, 0x800);
+function main() {
+    // SCREEN 1
+    EXT_CHGMDP(A = 1);
+    unsafe {
+        FORCLR = 15;
+        BAKCLR = 0;
+        BDRCLR = 0;
+        EXT_CHGCLR(A = 1);
+    }
+    SETGRP();
+    CLRSPR();
 
-    // スプライト
-    LOAD_SPRITE(sprite, sizeof(sprite) - 3);
+    // ポート番号を取得
+    VDP_INIT();
 
-    // スプライト表示
-    B = sprite[96]; // スプライトの色
-    PUT_SPRITE(0, B, 112, 95);
-    B = sprite[97];
-    PUT_SPRITE(1, B, 112, 95);
-    B = sprite[98];
-    PUT_SPRITE(2, B, 112, 95);
-    ei;
+    unsafe {
+        di;
+        A = RG1SAV;
+        A |= 0b10; // 16x16スプライト
+        VDP(0x1 + 0x80, E = A);
+        // BG
+        LOAD_PATTERN(font                       , sizeof(font)   - 0x800);
+        LOAD_COLOR  (font + sizeof(font) - 0x800, 0x800);
 
-    // WAIT SPACE KEY
-    shadow byte x;
-    shadow byte y;
-    x = 16;
-    y = 16;
-    do {
-        A = GTSTCK(A = 0); // カーソルキーの状態
-        switch(A) {
-            case(1) {if(y >  0) y--;}
-            case(3) {if(x < 48) x++;}
-            case(5) {if(y < 48) y++;}
-            case(7) {if(x >  0) x--;}
-        }
-        VIEW_MAP(x,y);
-        A = GTTRIG(A = 0); // スペースキーで終了
-    } while(A == 0);
+        // スプライト
+        LOAD_SPRITE(sprite, sizeof(sprite) - 3);
 
-    // SCREEN 0
-    EXT_CHGMDP(A = 0);
-    KILBUF();
+        // スプライト表示
+        B = sprite[96]; // スプライトの色
+        PUT_SPRITE(0, B, 112, 95);
+        B = sprite[97];
+        PUT_SPRITE(1, B, 112, 95);
+        B = sprite[98];
+        PUT_SPRITE(2, B, 112, 95);
+        ei;
+
+        // WAIT SPACE KEY
+        shadow byte x;
+        shadow byte y;
+        x = 16;
+        y = 16;
+        do {
+            A = GTSTCK(A = 0); // カーソルキーの状態
+            switch(A) {
+                case(1) {if(y >  0) y--;}
+                case(3) {if(x < 48) x++;}
+                case(5) {if(y < 48) y++;}
+                case(7) {if(x >  0) x--;}
+            }
+            VIEW_MAP(x,y);
+            A = GTTRIG(A = 0); // スペースキーで終了
+        } while(A == 0);
+
+        // SCREEN 0
+        EXT_CHGMDP(A = 0);
+        KILBUF();
+    }
 }
 
-return;
-
-function VIEW_MAP(byte vx, byte vy) {
+function VIEW_MAP(shadow byte vx, shadow byte vy) {
     shadow byte x;
     shadow byte y;
     shadow byte[32][24] mapBuf; // 2x2のタイルデータを使ってマップを展開するバッファ
@@ -82,7 +91,7 @@ function VIEW_MAP(byte vx, byte vy) {
         for(y = 0; y < 12; y++) {
             HL = vy;
             HL += y;
-            HL *= 64; // マップ横サイズ
+            HL << 6; // * 64 マップ横サイズ
             HL += vx;
             HL += map;
             for(x = 0; x < 16; x++) {
@@ -140,12 +149,12 @@ function VIEW_MAP(byte vx, byte vy) {
 }
 
 // VDPポート番号
-byte VDP_R0; // VRAM読み込み用
-byte VDP_W0; // VRAM書き込み用
-byte VDP_R1;
-byte VDP_W1; // レジスタ書き込み用
-byte VDP_R2;
-byte VDP_W3;
+shadow byte VDP_R0; // VRAM読み込み用
+shadow byte VDP_W0; // VRAM書き込み用
+shadow byte VDP_R1;
+shadow byte VDP_W1; // レジスタ書き込み用
+shadow byte VDP_R2;
+shadow byte VDP_W3;
 
 function VDP_INIT() {
     // MAIN ROMからVDPのポート番号を取得し保存
