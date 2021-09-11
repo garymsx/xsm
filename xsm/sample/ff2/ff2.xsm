@@ -16,13 +16,25 @@ dw main,0,0,0;
 db 0,0,0,0,0,0;
 */
 
-// フォント読み込み
-byte[] font   = from("ff2font.bmp"  , sc2);
-byte[] sprite = from("ff2sprite.bmp", sp16);
-byte[] tile   = from("ff2tile.tmx"  , tmxmap2);
-byte[] map    = from("ff2.tmx"      , tmxmap);
+// RLE圧縮リソース
+byte[] tmpFont   = from("ff2font.bmp"  , sc2     , rle);
+byte[] tmpSprite = from("ff2sprite.bmp", sp16    , rle);
+byte[] tmpTile   = from("ff2tile.tmx"  , tmxmap2 , rle);
+byte[] tmpMap    = from("ff2.tmx"      , tmxmap  , rle);
+
+// 各種リソース
+shadow byte[8*256*2]  font;    // キャラクタ(8byte) * 256 + 色データ(8byte) * 256
+shadow byte[3*32+3]   sprite;  // スプライト枚数 + 枚数分の色データ
+shadow byte[16*16]    tile;
+shadow byte[64*64]    map;
 
 function main() {
+    // RLEデータ展開
+    UNRLE(HL = font  , DE = tmpFont);
+    UNRLE(HL = sprite, DE = tmpSprite);
+    UNRLE(HL = tile  , DE = tmpTile);
+    UNRLE(HL = map   , DE = tmpMap);
+
     // SCREEN 1
     EXT_CHGMDP(A = 1);
     unsafe {
@@ -346,6 +358,41 @@ function MEM_TO_VRAM(HL, DE, BC) {
                 DE++;
                 HL--;
             } while(HL != 0)
+        }
+    }
+}
+
+/**
+ * RLE圧縮を展開する(PackBits)
+ * @param HL 展開先アドレス
+ * @param DE RLE元データ
+ */
+function UNRLE(HL, DE) {
+    while() {
+        A = *DE; // データ長
+        DE++;
+        if((+)A > 0) {
+            // 同じ値が連続する場合
+            B = A;
+            A = *DE;
+            DE++;
+            loop(B) {
+                *HL = A;
+                HL++;
+            }
+        } else if((+)A < 0) {
+            // 値が連続しない場合
+            neg A;
+            B = A;
+            loop(B) {
+                A = *DE;
+                DE++;
+                *HL = A;
+                HL++;
+            }
+        } else {
+            // データ長が0なので終了する
+            break;
         }
     }
 }

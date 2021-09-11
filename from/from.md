@@ -4,7 +4,7 @@ from関数は単純にファイルを取り込むだけではなく、プログ�
 
 ## 書式
 
-byte[] foo = from(ファイル名[, sc1/sc2/sp8/sp16/tmxmap/tmxmap2/csv]);
+byte[] foo = from(ファイル名 [, sc1/sc2/sp8/sp16/tmxmap/tmxmap2/csv] [, rle]);
 
 - sc1 - BMPデータをMSXのSCREEN1のフォント(&カラー)データに変換する。
 - sc2 - BMPデータをMSXのSCREEN2のフォント(&カラー)データに変換する。
@@ -12,6 +12,7 @@ byte[] foo = from(ファイル名[, sc1/sc2/sp8/sp16/tmxmap/tmxmap2/csv]);
 - sp16 - BMPデータをMSXの16x16スプライトデータ(モード1)に変換する。
 - tmxmap - Tiled Map Editorの出力するマップを取り込む。
 - tmxmap2 - Tiled Map Editorの出力するマップを取り込む。ただし1マスが2x2タイル構成とみなす。
+- csv - csvのデータを取り込む
 
 ※BMPデータはIndexed Color(256色)である必要があり、パレットのうち0～15番の色が取り込み対象になります。
 
@@ -119,6 +120,20 @@ byte[] foo = from("tile.tmx", tmxmap2);
 
 tmxmapのままでは16x16を表現するのに4バイト必要としますが、この方式を併用することで1バイトで済ますことが出来ます。  
 ただし、この1バイトを4マスに展開する処理はプログラムで作りこむ必要があります。  
+
+### csv
+csvファイルを取り込みます。セルの値は0～255である必要があります。
+```
+byte[] foo = from("data.csv", csv);
+```
+
+### rle
+オプションにrleを追加するとRLE圧縮(PackBits方式)します。
+```
+byte[] foo = from("map.tmx", tmxmap, rle);  // 圧縮されているのでこのままでは使えません
+```
+終端データには0が設定されます。  
+長さデータで0を読み取った場合に展開処理を終了するようにしてください。
 
 ### その他
 

@@ -13,19 +13,19 @@ function SC_PUTCH(e, c = 0x02) = 0x0005;
 // HLレジスタが指すアドレスの文字列をコンソールに表示
 // 終了文字は"\0"
 function print(de) {
-    push af,bc,hl;
-    while() {  // ()で無限ループ
-        a = *de;
-        if(a == 0) break;
-        using(de) {
-            // 改行コードは \r も一緒に出力する
-            if(a == '\n') putch('\r');
-            putch(a);
+    using(af,bc,hl) {
+        while() {  // ()で無限ループ
+            a = *de;
+            if(a == 0) break;
+            using(de) {
+                // 改行コードは \r も一緒に出力する
+                if(a == '\n') putch('\r');
+                putch(a);
+            }
+            de++;
+            a = *de;
         }
-        de++;
-        a = *de;
     }
-    pop af,bc,hl;
 }
 
 // 1文字出力
@@ -57,19 +57,17 @@ function printNum(hl) {
         ix[5] = '\0'; // 終了文字
         de = &buf[4];  // bufの後ろから文字で埋めていく
 
-        unsafe {
-            for(a = 0;a < 5;a++) {
-                push af,de;
-                div8(hl,10);       // 商と余り両方使いたいので"/=" や "%="" は 使わない
-                pop de;
-                a = l;             // 余りは必ず8bitに収まるのでHは捨ててよい
-                hl = bc;           // div8の商はbcに入っている
-                a += '0';          // 余りを文字化する
-                *de = a;
-                pop af;            // スタックが合わなくなるので break前にpopしておく
-                if(hl == 0) break; // 0になったら打ち切り
-                de--;              // 前方へ戻っていく
-            }
+        for(a = 0;a < 5;a++) {
+            push af,de;
+            div8(hl,10);       // 商と余り両方使いたいので"/=" や "%="" は 使わない
+            pop de;
+            a = l;             // 余りは必ず8bitに収まるのでHは捨ててよい
+            hl = bc;           // div8の商はbcに入っている
+            a += '0';          // 余りを文字化する
+            *de = a;
+            pop af;            // スタックが合わなくなるので break前にpopしておく
+            if(hl == 0) break; // 0になったら打ち切り
+            de--;              // 前方へ戻っていく
         }
 
         // 左詰めしたい場合
