@@ -1,0 +1,367 @@
+import "/lang/mul.xsm";
+import "/lang/mulw.xsm";
+import "/lang/div.xsm";
+import "/lang/divw.xsm";
+
+import "/msx/workarea.xsm";
+import "/msx/bios.xsm";
+import "/msx/extbios.xsm";
+
+// このコメントを解除するとROM化出来ます
+/*
+org 0x4000;
+org 0x8000,shadow;
+dc @"AB";
+dw main,0,0,0;
+db 0,0,0,0,0,0;
+*/
+
+// フォントデータ
+byte[] font   = from("font.bmp"  , sc1);
+
+int seed = 0;
+
+function main() {
+    // SCREEN 1
+    EXT_CHGMDP(A = 1);
+    unsafe {
+        FORCLR = 15;
+        BAKCLR = 0;
+        BDRCLR = 0;
+        EXT_CHGCLR(A = 1);
+    }
+
+    // ポート番号を取得
+    VDP_INIT();
+
+    unsafe {
+        seed = JIFFY;
+
+        di;
+        // BG
+        LOAD_PATTERN(font                       , sizeof(font)   - 32);
+        LOAD_COLOR  (font + sizeof(font) - 32, 32);
+        ei;
+
+        // 座標の初期値を適当に手入力
+        // 文字
+        byte[10] cx = { 0, 1, 4, 7,10,12,17,21,25,30};
+        byte[10] cy = { 0,10, 5,22,15, 3, 7,20,12, 4};
+
+        // 文字に追従するブランクの座標
+        byte[10] bx = {10,11,14,17,20,22,27,31, 3, 8};
+        byte[10] by = { 2,12, 7,24,17, 5, 9,22,14, 6};
+
+        do {
+            di;
+
+            // 配列の座標を取得
+            int pcx;
+            int pcy;
+            int pbx;
+            int pby;
+            byte x;
+            byte y;
+            char ch;
+
+            pcx = cx;
+            pcy = cy;
+            pbx = bx;
+            pby = by;
+
+            for(A = 0;A < 10;A++) {
+                using(AF) {
+                    HL = pcx; x = *HL;
+                    HL = pcy; y = *HL;
+
+                    // 文字はランダム
+                    HL = rand();
+                    HL /= 2621;   // 0～25までの数字が出る
+                    ch = L;
+
+                    // 暗い文字
+                    LOCATE(x,y);
+                    A = ch;
+                    A += 65;
+                    VPOKE(A);
+                    y++;
+
+                    if( y >= 24) {
+                        y = 0;
+                        x++;
+                    }
+                    if( x >= 32) x = 0;
+
+                    HL = pcx; *HL = x;
+                    HL = pcy; *HL = y;
+                    pcx++;
+                    pcy++;
+
+                    // 明るい文字
+                    LOCATE(x,y);
+                    A = ch;
+                    A += 97;
+                    VPOKE(A);
+                }
+            }
+
+            loop(10) {
+                using(BC) {
+                    HL = pbx; x = *HL;
+                    HL = pby; y = *HL;
+                    LOCATE(x,y);
+                    A = ' ';
+                    VPOKE(A);
+                    y++;
+
+                    if( y >= 24) {
+                        y = 0;
+                        x++;
+                    }
+                    if( x >= 32) x = 0;
+
+                    HL = pbx; *HL = x;
+                    HL = pby; *HL = y;
+
+                    pbx++;
+                    pby++;
+                }
+            }
+            ei;
+
+            // 垂直同期待ち
+            loop(2) {
+                C = JIFFY;
+                while() {
+                    A = JIFFY;
+                    if(A != C) break;
+                }
+            }
+
+            A = GTTRIG(A = 0); // スペースキーで終了
+        } while(A == 0);
+
+        // SCREEN 0
+        EXT_CHGMDP(A = 0);
+        KILBUF();
+    }    
+}
+
+// VDPポート番号
+shadow byte VDP_R0; // VRAM読み込み用
+shadow byte VDP_W0; // VRAM書き込み用
+shadow byte VDP_R1;
+shadow byte VDP_W1; // レジスタ書き込み用
+shadow byte VDP_R2;
+shadow byte VDP_W3;
+
+function VDP_INIT() {
+    // MAIN ROMからVDPのポート番号を取得し保存
+    A = RDSLT(A = EXPTBL[0], HL = &VDP_DR);
+    VDP_R0 = A;
+    A++;
+    VDP_R1 = A;
+    A++;
+    VDP_R2 = A;
+
+    A = RDSLT(A = EXPTBL[0], HL = &VDP_DW);
+    VDP_W0 = A;
+    A++;
+    VDP_W1 = A;
+    A++;A++;
+    VDP_W3 = A;
+}
+
+/**
+ * VDPへ書き込み
+ * @param D レジスタ番号
+ * @param E 書き込むデータ
+ * @remark VDPアクセス中は割り込み禁止すること
+ */
+function VDP(D,E) using A, C {
+    A = VDP_W1;
+    C = A;
+    out *C, E;
+    out *C, D;
+}
+
+/**
+ * 連続したVRAMへの書き込み開始宣言
+ * @type MSX
+ * @param HL レジスタ番号
+ * @return C VRAM書き込み用のポート番号を返す
+ * @using A,D,E
+ * @remark
+ *   VDPアクセス中は割り込み禁止すること
+ *   CLOSEはない
+ */
+function START_VPOKE(HL) return C using A,D,E {
+    // bit14-16のセット
+    VDP(D = 14 + 0x80, 0); // SCREEN1だと意味がなさそうなのだけど一応
+
+    // bit0-7のセット
+    A = VDP_W1;
+    C = A;
+    out *C,L;
+
+    // bit8-13を書き込みモードでセット
+    A = H;
+    A &= 0x3f; //  bit6-7を00でクリア
+    A |= 0x40; //  bit6-7に01をセット
+    out *C,A;
+
+    // VRAM書き込み用ポート
+    A = VDP_W0;
+    C = A;
+
+    return C;
+}
+
+/**
+ * START_VPOKEしたアドレスへ書き込む
+ * @type MSX
+ * @param value 書き込むデータ
+ * @remark
+ *   わかり易くするためにinline化しただけ。
+ *   Cレジスタはポート番号が設定済みであること。
+ *   VDPアクセス中は割り込み禁止すること。
+ */
+inline VPOKE(value) {
+    out *C, value;
+}
+
+/**
+ * 文字を指定座標から出力出来る準備をする
+ * @param B X座標
+ * @param C Y座標
+ */
+function LOCATE(B,C) {
+    using(AF, HL) {
+        unsafe {
+            HL = C;
+            HL *= 32;
+            HL += B;
+            HL += 0x1800;
+            START_VPOKE(HL);
+        }
+    }
+}
+
+/**
+ * LOCATEで指定した座標に文字列を出力する
+ * @param HL 文字列へのアドレス
+ * @param B  文字列の長さ(255バイトまで)
+ * @remarks
+ *    Bレジスタの長さ、もしくは'\0'で終了する
+ */
+function PRINT(HL, B = 255) {
+    using(AF,HL) {
+        loop(B) {
+            A = *HL;
+            if(A == 0) break;
+            VPOKE(A);
+            HL++;
+        }
+    }
+}
+
+/**
+ * パターンデータを設定する
+ * @param DE パターンデータのアドレス
+ * @param BC 読み込むサイズ
+ * @using AF,BC,DE,HL
+ */
+function LOAD_PATTERN(DE, BC) using AF,BC,DE,HL {
+    MEM_TO_VRAM(HL =      0, DE, BC);
+    //MEM_TO_VRAM(HL = 0x0800, DE, BC);
+    //MEM_TO_VRAM(HL = 0x1000, DE, BC);
+}
+
+/**
+ * カラーテーブルを設定する
+ * @param DE パターンデータのアドレス
+ * @param BC 読み込むサイズ
+ * @using AF,BC,DE,HL
+ */
+function LOAD_COLOR(DE, BC) using AF,BC,DE,HL {
+    MEM_TO_VRAM(HL = 0x2000, DE, BC);
+    //MEM_TO_VRAM(HL = 0x2800, DE, BC);
+    //MEM_TO_VRAM(HL = 0x3000, DE, BC);
+}
+
+/**
+ * VRAMにメモリを転送する
+ * @param HL VRAMアドレス
+ * @param DE メモリアドレス
+ * @param BC 転送サイズ
+ */
+function MEM_TO_VRAM(HL, DE, BC) {
+    using(AF,BC,DE,HL) {
+        using(BC,DE) {
+            START_VPOKE(HL);
+        }
+
+        unsafe {
+            HL = BC;
+            C  = VDP_W0;
+            do {
+                A = *DE;
+                VPOKE(A);
+                DE++;
+                HL--;
+            } while(HL != 0)
+        }
+    }
+}
+
+/**
+ * RLE圧縮を展開する(PackBits)
+ * @param HL 展開先アドレス
+ * @param DE RLE元データ
+ */
+function UNRLE(HL, DE) {
+    while() {
+        A = *DE; // データ長
+        DE++;
+        if((+)A > 0) {
+            // 同じ値が連続する場合
+            B = A;
+            A = *DE;
+            DE++;
+            loop(B) {
+                *HL = A;
+                HL++;
+            }
+        } else if((+)A < 0) {
+            // 値が連続しない場合
+            neg A;
+            B = A;
+            loop(B) {
+                A = *DE;
+                DE++;
+                *HL = A;
+                HL++;
+            }
+        } else {
+            // データ長が0なので終了する
+            break;
+        }
+    }
+}
+
+/**
+ * 0〜255の乱数を生成
+ */
+function rand() return HL {
+    using(BC,DE) {
+        HL = seed;
+        DE = HL;
+        HL += HL;
+        HL += HL;
+        HL += DE;
+        HL += 0x3771;
+        seed = HL;
+    }
+
+    return HL;
+}
