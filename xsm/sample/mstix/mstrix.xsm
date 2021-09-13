@@ -350,7 +350,7 @@ function UNRLE(HL, DE) {
 }
 
 /**
- * 0〜255の乱数を生成
+ * 0〜65535の乱数を生成
  */
 function rand() return HL {
     using(BC,DE) {
