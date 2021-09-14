@@ -19,7 +19,7 @@ db 0,0,0,0,0,0;
 // フォントデータ
 byte[] font   = from("font.bmp"  , sc1);
 
-int seed = 0;
+shadow int seed;
 
 function main() {
     // SCREEN 1
@@ -45,24 +45,36 @@ function main() {
 
         // 座標の初期値を適当に手入力
         // 文字
-        byte[10] cx = { 0, 1, 4, 7,10,12,17,21,25,30};
-        byte[10] cy = { 0,10, 5,22,15, 3, 7,20,12, 4};
+        byte[10] tmpCx = { 0, 1, 4, 7,10,12,17,21,25,30};
+        byte[10] tmpCy = { 0,10, 5,22,15, 3, 7,20,12, 4};
 
         // 文字に追従するブランクの座標
-        byte[10] bx = {10,11,14,17,20,22,27,31, 3, 8};
-        byte[10] by = { 2,12, 7,24,17, 5, 9,22,14, 6};
+        byte[10] tmpBx = {10,11,14,17,20,22,27,31, 3, 8};
+        byte[10] tmpBy = { 2,12, 7,24,17, 5, 9,22,14, 6};
+
+        // 座標のワーク領域
+        shadow byte[10] cx;
+        shadow byte[10] cy;
+        shadow byte[10] bx;
+        shadow byte[10] by;
+
+        // メモリへコピー
+        move cx,tmpCx;
+        move cy,tmpCy;
+        move bx,tmpBx;
+        move by,tmpBy;
 
         do {
             di;
 
             // 配列の座標を取得
-            int pcx;
-            int pcy;
-            int pbx;
-            int pby;
-            byte x;
-            byte y;
-            char ch;
+            shadow int pcx;
+            shadow int pcy;
+            shadow int pbx;
+            shadow int pby;
+            shadow byte x;
+            shadow byte y;
+            shadow char ch;
 
             pcx = cx;
             pcy = cy;
@@ -76,13 +88,13 @@ function main() {
 
                     // 文字はランダム
                     HL = rand();
-                    HL /= 2621;   // 0～25までの数字が出る
+                    HL /= 689;   // 0～95までの数字が出る
                     ch = L;
 
                     // 暗い文字
                     LOCATE(x,y);
                     A = ch;
-                    A += 65;
+                    A += 64;
                     VPOKE(A);
                     y++;
 
@@ -100,7 +112,7 @@ function main() {
                     // 明るい文字
                     LOCATE(x,y);
                     A = ch;
-                    A += 97;
+                    A += 144;
                     VPOKE(A);
                 }
             }
@@ -350,7 +362,7 @@ function UNRLE(HL, DE) {
 }
 
 /**
- * 0〜65535の乱数を生成
+ * 0〜255の乱数を生成
  */
 function rand() return HL {
     using(BC,DE) {
