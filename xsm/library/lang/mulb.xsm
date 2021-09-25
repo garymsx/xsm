@@ -1,0 +1,18 @@
+ /**
+ * 汎用掛け算処理、A *= Bを実行
+ * @param  A 掛けられる数
+ * @param  D 掛ける数
+ * @return A 計算結果
+ */
+function MULB(A,D) return A {
+    using(BC) {
+        C = A;
+        A = 0;
+        loop(8) {
+            D>>>;              // ローテーションなら最終的に元の値に戻る
+            if($C) A += C;
+            C<<;
+        }
+    }
+    return A;
+}

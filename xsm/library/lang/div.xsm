@@ -1,66 +1,66 @@
 /**
- * 汎用割り算処理、hl /= a を実行
- * @param  hl  割られる数
- * @param  a   割る数
- * @return hl  計算結果
+ * 汎用割り算処理、HL /= A を実行
+ * @param  HL  割られる数
+ * @param  A   割る数
+ * @return HL  計算結果
  */
-function DIV(hl,a) return hl {
-    using(bc) {
-        hl = div8(hl, a);
-        return hl;
+function DIV(HL,A) return HL {
+    using(BC) {
+        HL = div(HL, A);
     }
+    return HL;
 }
 
 /**
- * 汎用剰余算処理、hl %= a を実行
- * @param  hl  割られる数
- * @param  a   割る数
- * @return hl  余り
+ * 汎用剰余算処理、HL %= A を実行
+ * @param  HL  割られる数
+ * @param  A   割る数
+ * @return HL  余り
  */
-function MOD(hl,a) return hl {
-    using(bc) {
-        div8(hl, a);
-        return hl;
+function MOD(HL,A) return HL {
+    using(BC) {
+        div(HL, A);
     }
+    return HL;
 }
 
 /**
- * 汎用割り算処理、hl /= a を実行
- * @param  hl  割られる数
- * @param  a   割る数
- * @return bc  計算結果 (hl 余り)
+ * 汎用割り算処理、HL /= A を実行
+ * @param  HL  割られる数
+ * @param  A   割る数
+ * @return BC  計算結果 (HL 余り)
  */
-function div8(hl,a) return bc {
+function div(HL,A) return BC {
     // 0で除算
-    if(a == 0) return 0;
+    if(A == 0) return 0;
 
-    using(af,de) {
+    using(AF,DE) {
         // Aを左詰めする、フラグが押し出されるまでループ
-        b = 8;
+        B = 8;
         @ {                  // @{〜} 簡易ラベル、continueとbreakが使えるようになる
-            b++;
-            a<<<;
-            on $nc continue; // 押し出し判定
+            B++;
+            A<<<;
+            on $NC continue; // 押し出し判定
         }
-        a>>>;                // 押し出され分を戻す
-        d = a;               // 左詰めしたAを16bitに拡張
-        e = 0;
+        A>>>;                // 押し出され分を戻す
+        D = A;               // 左詰めしたAを16bitに拡張
+        E = 0;
 
-        a = b;
-        bc = 0;
+        A = B;
+        BC = 0;
         while() {
-            if(hl >= de) { // 元の数のほうが大きければdeを引く
-                hl -= de;
-                bc++;
+            if(HL >= DE) { // 元の数のほうが大きければDEを引く
+                HL -= DE;
+                BC++;
             }
-            a--;
-            on $z break;     // ループ回数処理したらここで打ち切り
+            A--;
+            on $Z break;     // ループ回数処理したらここで打ち切り
             // ループ時の処理
-            de>>; // 割る数の桁下がり
-            bc<<; // 商の桁上がり
+            DE>>; // 割る数の桁下がり
+            BC<<; // 商の桁上がり
         }
 
-        return bc;
+        return BC;
     }
 
 }

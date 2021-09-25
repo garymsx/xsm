@@ -1,63 +1,63 @@
 /**
- * 汎用割り算処理、hl /= a を実行
- * @param  hl  割られる数
- * @param  bc  割る数
- * @return hl  計算結果
+ * 汎用割り算処理、HL /= A を実行
+ * @param  HL  割られる数
+ * @param  BC  割る数
+ * @return HL  計算結果
  */
-function DIVW(hl,bc) return hl {
-    using(bc) {
-        hl = div16(hl, bc);
-        return hl;
+function DIVW(HL,BC) return HL {
+    using(BC) {
+        HL = divw(HL, BC);
     }
+    return HL;
 }
 
 /**
- * 汎用剰余算処理、hl %= a を実行
- * @param  hl  割られる数
- * @param  a   割る数
- * @return hl  余り
+ * 汎用剰余算処理、HL %= A を実行
+ * @param  HL  割られる数
+ * @param  A   割る数
+ * @return HL  余り
  */
-function MODW(hl,bc) return hl {
-    using(bc) {
-        div16(hl, bc);
-        return hl;
+function MODW(HL,BC) return HL {
+    using(BC) {
+        divw(HL, BC);
     }
+    return HL;
 }
 /**
- * 汎用割り算処理、hl /= bc を実行
- * @param  hl  割られる数
- * @param  bc  割る数
- * @return bc  計算結果 (hl 余り)
+ * 汎用割り算処理、HL /= BC を実行
+ * @param  HL  割られる数
+ * @param  BC  割る数
+ * @return BC  計算結果 (HL 余り)
  */
-function div16(hl,bc) return bc {
+function divw(HL,BC) return BC {
 
     // 0で除算
-    if(b == 0 && c == 0) return 0;
+    if(B == 0 && C == 0) return 0;
 
-    using(af,de) {
-        // BCを左詰めする、フラグが押し出されるまでループ
-        a = 0;
-        de = bc;
+    using(AF,DE) {
+        // DEを左詰めする、フラグが押し出されるまでループ
+        A = 0;
+        DE = BC;
         @ {
-            a++;
-            de<<<;
+            A++;
+            DE<<<;
             on $nc continue; // 押し出し判定
         }
-        de>>>;                // 押し出され分を戻す
-        bc = 0;
+        DE>>>;                // 押し出され分を戻す
+        BC = 0;
         while() {
-            if(hl >= de) { // 元の数のほうが大きければbcを引く
-                hl -= de;
-                bc++;
+            if(HL >= DE) { // 元の数のほうが大きければDEを引く
+                HL -= DE;
+                BC++;
             }
-            a--;
-            on $z break;     // ループ回数処理したらここで打ち切り
+            A--;
+            on $Z break;     // ループ回数処理したらここで打ち切り
             // ループ時の処理
-            de>>; // 割る数の桁下がり
-            bc<<; // 商の桁上がり
+            DE>>; // 割る数の桁下がり
+            BC<<; // 商の桁上がり
         }
 
-        return bc;
+        return BC;
     }
 }
 

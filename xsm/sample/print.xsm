@@ -59,10 +59,10 @@ function printNum(hl) {
 
         for(a = 0;a < 5;a++) {
             push af,de;
-            div8(hl,10);       // 商と余り両方使いたいので"/=" や "%="" は 使わない
+            div(hl,10);       // 商と余り両方使いたいので"/=" や "%="" は 使わない
             pop de;
             a = l;             // 余りは必ず8bitに収まるのでHは捨ててよい
-            hl = bc;           // div8の商はbcに入っている
+            hl = bc;           // divの商はbcに入っている
             a += '0';          // 余りを文字化する
             *de = a;
             pop af;            // スタックが合わなくなるので break前にpopしておく

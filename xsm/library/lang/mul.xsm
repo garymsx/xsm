@@ -1,18 +1,18 @@
  /**
- * 汎用掛け算処理、hl *= aを実行
- * @param  hl 掛けられる数
- * @param  a  掛ける数
- * @return hl 計算結果
+ * 汎用掛け算処理、HL *= Aを実行
+ * @param  HL 掛けられる数
+ * @param  A  掛ける数
+ * @return HL 計算結果
  */
-function MUL(hl,a) return hl {
-    using(bc,de) {
-        ex de,hl;
-        hl = 0;
+function MUL(HL,A) return HL {
+    using(BC,DE) {
+        ex DE,HL;
+        HL = 0;
         loop(8) {
-            a>>>;              // ローテーションなら最終的に元の値に戻る
-            if($c) hl += de;
-            de<<;
+            A>>>;              // ローテーションなら最終的に元の値に戻る
+            if($C) HL += DE;
+            DE<<;
         }
     }
-    return hl;
+    return HL;
 }

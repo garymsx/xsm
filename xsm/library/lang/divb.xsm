@@ -1,0 +1,63 @@
+/**
+ * 汎用割り算処理、A /= D を実行
+ * @param  A  割られる数
+ * @param  D  割る数
+ * @return A  計算結果
+ */
+function DIVB(A,D) return A {
+    using(BC) {
+        A = divb(A, D);
+    }
+    return A;
+}
+
+/**
+ * 汎用剰余算処理、HL %= A を実行
+ * @param  A  割られる数
+ * @param  D  割る数
+ * @return A  余り
+ */
+function MODB(A,D) return A {
+    using(BC) {
+        divb(A, D);
+    }
+    return A;
+}
+
+/**
+ * 汎用割り算処理、HL /= A を実行
+ * @param  A  割られる数
+ * @param  D  割る数
+ * @return B  計算結果 (A 余り)
+ */
+function divb(A,D) return B {
+    // 0で除算
+    if(D == 0) return 0;
+
+    using(DE) {
+        // Dを左詰めする、フラグが押し出されるまでループ
+        E = 0;
+        @ {                  // @{〜} 簡易ラベル、continueとbreakが使えるようになる
+            E++;
+            D<<<;
+            on $NC continue; // 押し出し判定
+        }
+        D>>>;                // 押し出され分を戻す
+
+        B = 0;
+        while() {
+            if(A >= D) { // 元の数のほうが大きければDを引く
+                A -= D;
+                B++;
+            }
+            E--;
+            on $Z break;     // ループ回数処理したらここで打ち切り
+            // ループ時の処理
+            D>>; // 割る数の桁下がり
+            B<<; // 商の桁上がり
+        }
+
+        return B;
+    }
+
+}
