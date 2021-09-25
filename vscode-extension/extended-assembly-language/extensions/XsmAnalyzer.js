@@ -11,6 +11,7 @@ module.exports = class XsmAnalyzer {
         this.members = [];
         this.parsers = [];
         this.files = [];
+        this.busy = false;
     }
 
     analyze(uri) {

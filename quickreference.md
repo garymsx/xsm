@@ -187,12 +187,14 @@
   HL /= BC;
   HL %= D;
   ```
-  乗算、除算、余剰算は以下のファイルをimportしている場合に使用できます。
+  乗算、除算、余剰算は以下のファイルをimportしている場合に使用できます(自動化予定)
   ```
-  import "library/lang/mul.xsm";
-  import "library/lang/mulw.xsm";
-  import "library/lang/div.xsm";
-  import "library/lang/divw.xsm";
+  import "library/lang/mulb.xsm"; //  8 *  8 bit
+  import "library/lang/mul.xsm";  // 16 *  8 bit
+  import "library/lang/mulw.xsm"; // 16 * 16 bit
+  import "library/lang/divb.xsm"; //  8 *  8 bit
+  import "library/lang/div.xsm";  // 16 *  8 bit
+  import "library/lang/divw.xsm"; // 16 * 16 bit
   ```
 
 - インクリメント、デクリメント(++ --)
@@ -481,7 +483,7 @@
 
 - ファイル取り込み関数(from)
   様々な形式のファイルを読み込み、プログラムから扱いやすい形に変換します。  
-  詳しくは[from関数について](from/from.md)を参照してください。
+  詳しくは[from関数について](from)を参照してください。
   ```
   byte[] foo = from("data.bin");         // ファイルをそのままfooに格納
   byte[] foo = from("tile.bmp", sc1);    // BMP(Indexed Color)形式の画像をSCREEN1のVRAM形式に変換

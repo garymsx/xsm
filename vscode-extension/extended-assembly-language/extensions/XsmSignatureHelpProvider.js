@@ -27,17 +27,19 @@ module.exports = class XsmSignatureHelpProvider {
                     const functionName = nearStatement.getFunctionName();
                     if(functionName != null) {
                         const func = this.analyzer.searchFunction(path, functionName);
+                        if(func != null) {
                             const signatureHelp = new vscode.SignatureHelp();
                             signatureHelp.activeParameter = 0;
                             signatureHelp.activeSignature = 0;
                             let doc = [];
                             if(func.description != null) doc.push(func.description);
                             if(func.documentation != null) doc.push(func.documentation);
-
+    
                             signatureHelp.signatures = [
                                 new vscode.SignatureInformation(func.detail, doc.join("  \n"))
                             ];
                             return Promise.resolve(signatureHelp);
+                        }
                     }
                 }
             } catch(e) {

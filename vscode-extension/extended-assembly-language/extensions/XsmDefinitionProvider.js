@@ -8,7 +8,8 @@ module.exports = class XsmDefinitionProvider {
     }
 
     provideDefinition(document, position, token) {
-        return this.analyzer.analyze(document.uri).then(() => {
+        // ここでの再解析はいらないはず
+        //return this.analyzer.analyze(document.uri).then(() => {
             const path = XsmUtils.getPath(document.uri);
             const namespace = this.analyzer.getNamespace(path, position.line);
             // カーソル位置のメンバー情報を取得
@@ -21,6 +22,6 @@ module.exports = class XsmDefinitionProvider {
             }
 
             return Promise.reject("no word here");
-        });
+        //});
     }
 }
