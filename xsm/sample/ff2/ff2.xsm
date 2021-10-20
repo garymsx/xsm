@@ -25,8 +25,8 @@ byte[] tmpMap    = from("ff2.tmx"      , tmxmap  , rle);
 // 各種リソース
 shadow byte[8*256*2]  font;    // キャラクタ(8byte) * 256 + 色データ(8byte) * 256
 shadow byte[3*32+3]   sprite;  // スプライト枚数 + 枚数分の色データ
-shadow byte[16*16]    tile;
-shadow byte[64*64]    map;
+shadow byte[64][4]    tile;
+shadow byte[64][64]   map;
 
 function main() {
     // RLEデータ展開
@@ -37,12 +37,10 @@ function main() {
 
     // SCREEN 1
     EXT_CHGMDP(A = 1);
-    unsafe {
-        FORCLR = 15;
-        BAKCLR = 0;
-        BDRCLR = 0;
-        EXT_CHGCLR(A = 1);
-    }
+    let FORCLR = 15;
+    let BAKCLR = 0;
+    let BDRCLR = 0;
+    EXT_CHGCLR(A = 1);
     SETGRP();
     CLRSPR();
 
@@ -51,14 +49,16 @@ function main() {
 
     unsafe {
         di;
-        A = RG1SAV;
-        A |= 0b10; // 16x16スプライト
-        VDP(0x1 + 0x80, E = A);
-        // BG
+
+        // 16x16スプライトモードにする
+        let A = RG1SAV | 0b10;
+        VDP(0x80 + 0x1, E = A);  // 上位bit 10 + レジスタ番号
+
+        // PCG読み込み
         LOAD_PATTERN(font                       , sizeof(font)   - 0x800);
         LOAD_COLOR  (font + sizeof(font) - 0x800, 0x800);
 
-        // スプライト
+        // スプライト読み込み
         LOAD_SPRITE(sprite, sizeof(sprite) - 3);
 
         // スプライト表示
@@ -76,15 +76,42 @@ function main() {
         x = 16;
         y = 16;
         do {
+            // 画面表示
+            SET_MAPBUF(x,y);
+            VIEW_MAPBUF(2,2);
+            // WAIT
+            VSYNC(B = 5);
             A = GTSTCK(A = 0); // カーソルキーの状態
             switch(A) {
-                case(1) {if(y >  0) y--;}
-                case(3) {if(x < 48) x++;}
-                case(5) {if(y < 48) y++;}
-                case(7) {if(x >  0) x--;}
+                case(1) {
+                    if(y >  0) {
+                        y--;
+                        // スクロールの中間表示
+                        VIEW_MAPBUF(2,1);
+                    }
+                }
+                case(3) {
+                    if(x < 48) {
+                        x++;
+                        VIEW_MAPBUF(3,2);
+                    }
+                }
+                case(5) {
+                    if(y < 48) {
+                        y++;
+                        VIEW_MAPBUF(2,3);
+                    }
+                }
+                case(7) {
+                    if(x >  0) {
+                        x--;
+                        VIEW_MAPBUF(1,2);
+                    }
+                }
             }
-            VIEW_MAP(x,y);
+
             A = GTTRIG(A = 0); // スペースキーで終了
+
         } while(A == 0);
 
         // SCREEN 0
@@ -93,69 +120,115 @@ function main() {
     }
 }
 
-function VIEW_MAP(shadow byte vx, shadow byte vy) {
+function VSYNC(B = 1) {
+    ei;
+    // 垂直同期待ち
+    loop(B) {
+        halt;
+    }
+}
+
+// /**
+//  * @param vx - 表示するX座標
+//  * @param vx - 表示するX座標
+//  */
+// function VIEW_MAP(shadow byte vx, shadow byte vy) {
+//     shadow byte x;
+//     shadow byte y;
+//     shadow byte[24][32] mapBuf; // 2x2のタイルデータを使ってマップを展開するバッファ
+//     shadow int pMap;
+
+//     clear mapBuf,0;
+
+//     // mapBufに展開
+//     unsafe(DE) {
+//         for(y = 0; y < 12; y++) {
+//             let C = y * 2;
+//             let pMap = &map[vy + y][vx]; // 表示するMAPの左上アドレス
+//             for(x = 0; x < 16; x++) {
+//                 using(BC) {
+//                     // mapBufの出力先の先頭アドレスを求める
+//                     let B = x * 2;
+//                     let HL = &mapBuf[C][B];
+
+//                     // 2x2のタイル構成テーブルから先頭アドレスを取得
+//                     using(HL) {
+//                         // マップからタイル番号を取り出して、タイルテーブルの先頭アドレスを求める
+//                         let BC = &tile[*pMap];
+//                     }
+//                     // 表示バッファに2x2ずつ埋めていく
+//                     let *HL = *BC;HL++;  BC++;
+//                     let *HL = *BC;HL+=31;BC++;
+//                     let *HL = *BC;HL++;  BC++;
+//                     let *HL = *BC;
+//                 }
+//                 pMap++;
+//             }
+//         }
+//     }
+
+//     // mapBufを表示
+//     di;
+//     HL = mapBuf;
+//     for(A = 0; A < 24; A++) {
+//         LOCATE(0,A);
+//         PRINT(HL, 32);
+//         HL += 32;
+//     }
+//     ei;
+// }
+
+// 2x2のタイルデータを使ってマップを展開するバッファ
+// 画面サイズ(32*24) + 周囲にスクロール用のバッファ
+shadow byte[24 + 4][32 + 4] mapBuf;  
+
+/**
+ * マップデータをマップバッファに展開する
+ * @param vx - 表示するX座標
+ * @param vx - 表示するX座標
+ */
+function SET_MAPBUF(shadow byte vx, shadow byte vy) {
     shadow byte x;
     shadow byte y;
-    shadow byte[32][24] mapBuf; // 2x2のタイルデータを使ってマップを展開するバッファ
+    shadow int pMap;
 
     // mapBufに展開
-    unsafe(BC) {
-        for(y = 0; y < 12; y++) {
-            HL = vy;
-            HL += y;
-            HL << 6; // * 64 マップ横サイズ
-            HL += vx;
-            HL += map;
-            for(x = 0; x < 16; x++) {
-                // mapBufの書き込み先の先頭アドレスを求める
-                using(HL) {
-                    HL = y;
-                    HL << 6; // * 64
-                    HL += mapBuf;
-                    using(HL) {
-                        HL = x;
-                        HL << 1; // *  2
-                        DE = HL;
-                    }
-                    HL += DE;
-                    ex DE,HL;
-                }
+    unsafe(DE) {
+        for(y = 0; y < 14; y++) {
+            let C = y * 2;
+            let pMap = &map[vy + y][vx]; // 表示するMAPの左上アドレス
+            for(x = 0; x < 18; x++) {
+                using(BC) {
+                    // mapBufの出力先の先頭アドレスを求める
+                    let B = x * 2;
+                    let HL = &mapBuf[C][B];
 
-                // MAPからタイル番号を取得
-                A = *HL;
-                // タイル番号から対応するパターンに変換
-                using(HL) {
-                    HL = tile;
-                    A << 2;
-                    HL += A;
-
-                    // mapBufに 2x2のタイルを書き込む
-                    *DE = *HL;
-                    DE++;
-                    HL++;
-                    *DE = *HL;
+                    // 2x2のタイル構成テーブルから先頭アドレスを取得
                     using(HL) {
-                        DE += 31; // 次の行(+32じゃないのはDE++が1回実行されているから)
+                        // マップからタイル番号を取り出して、タイルテーブルの先頭アドレスを求める
+                        let BC = &tile[*pMap];
                     }
-                    HL++;
-                    *DE = *HL;
-                    DE++;
-                    HL++;
-                    *DE = *HL;
-                    HL++;
+
+                    // 表示バッファに2x2ずつ埋めていく
+                    let *HL = *BC;HL++;  BC++;
+                    let *HL = *BC;HL+=35;BC++;
+                    let *HL = *BC;HL++;  BC++;
+                    let *HL = *BC;
                 }
-                HL++;
+                pMap++;
             }
         }
     }
+}
 
+function VIEW_MAPBUF(shadow byte vx, shadow byte vy) {
     // mapBufを表示
     di;
-    HL = mapBuf;
+    let HL = &mapBuf[vy][vx];
     for(A = 0; A < 24; A++) {
         LOCATE(0,A);
         PRINT(HL, 32);
-        HL += 32;
+        HL += 36;
     }
     ei;
 }
@@ -251,10 +324,7 @@ inline VPOKE(value) {
 function LOCATE(B,C) {
     using(AF, HL) {
         unsafe {
-            HL = C;
-            HL *= 32;
-            HL += B;
-            HL += 0x1800;
+            let HL = C * 32 + B + 0x1800;
             START_VPOKE(HL);
         }
     }
@@ -264,14 +334,11 @@ function LOCATE(B,C) {
  * LOCATEで指定した座標に文字列を出力する
  * @param HL 文字列へのアドレス
  * @param B  文字列の長さ(255バイトまで)
- * @remarks
- *    Bレジスタの長さ、もしくは'\0'で終了する
  */
-function PRINT(HL, B = 255) {
+function PRINT(HL, B) {
     using(AF,HL) {
         loop(B) {
             A = *HL;
-            if(A == 0) break;
             VPOKE(A);
             HL++;
         }

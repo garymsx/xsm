@@ -1,20 +1,20 @@
 /**
- * 汎用掛け算処理、HL *= BCを実行
+ * 汎用掛け算処理、HL *= DEを実行
  * @param  HL 掛けられる数
- * @param  BC 掛ける数
+ * @param  DE 掛ける数
  * @return HL 計算結果
- * @remark BC == 0でループが終了するので速度が一定ではない
+ * @remark DE == 0でループが終了するので速度が一定ではない
  */
-function MULW(HL,BC) return HL {
-    using(DE,BC) {
-        ex DE,HL;
+function MULW(HL,DE) return HL {
+    using(BC,DE) {
+        BC = HL;
         HL = 0;
         @ {
-            BC>>;               // MULと違いローテーションを使わない
-            if($C) HL += DE;
-            DE<<;
-            // Aレジスタ保護の為、ループを使わずにBCレジスタの0判定をしている
-            // 0判定はINC B/DEC Bが実行される
+            DE>>;               // MULと違いローテーションを使わない
+            if($C) HL += BC;
+            BC<<;
+            // Aレジスタ保護の為、ループを使わずにDEレジスタの0判定をしている
+            // 0判定はINC/DECが実行される
             if(B != 0 || C != 0) continue;
         }
         return HL;

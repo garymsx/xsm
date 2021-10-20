@@ -1,12 +1,12 @@
 /**
  * 汎用割り算処理、HL /= A を実行
  * @param  HL  割られる数
- * @param  BC  割る数
+ * @param  DE  割る数
  * @return HL  計算結果
  */
-function DIVW(HL,BC) return HL {
-    using(BC) {
-        HL = divw(HL, BC);
+function DIVW(HL,DE) return HL {
+    using(DE) {
+        HL = divw(HL, DE);
     }
     return HL;
 }
@@ -17,47 +17,47 @@ function DIVW(HL,BC) return HL {
  * @param  A   割る数
  * @return HL  余り
  */
-function MODW(HL,BC) return HL {
-    using(BC) {
-        divw(HL, BC);
+function MODW(HL,DE) return HL {
+    using(DE) {
+        divw(HL, DE);
     }
     return HL;
 }
 /**
- * 汎用割り算処理、HL /= BC を実行
+ * 汎用割り算処理、HL /= DE を実行
  * @param  HL  割られる数
- * @param  BC  割る数
- * @return BC  計算結果 (HL 余り)
+ * @param  DE  割る数
+ * @return DE  計算結果 (HL 余り)
  */
-function divw(HL,BC) return BC {
-
+function divw(HL,DE) return DE {
     // 0で除算
-    if(B == 0 && C == 0) return 0;
+    if(D == 0 && E == 0) return 0;
 
-    using(AF,DE) {
-        // DEを左詰めする、フラグが押し出されるまでループ
+    using(AF,BC) {
+        // BCを左詰めする、フラグが押し出されるまでループ
         A = 0;
-        DE = BC;
+        BC = DE;
         @ {
             A++;
-            DE<<<;
+            BC<<<;
             on $nc continue; // 押し出し判定
         }
-        DE>>>;                // 押し出され分を戻す
-        BC = 0;
+        BC>>>;                // 押し出され分を戻す
+        DE = 0;
         while() {
-            if(HL >= DE) { // 元の数のほうが大きければDEを引く
-                HL -= DE;
-                BC++;
+            if(HL >= BC) { // 元の数のほうが大きければBCを引く
+                HL -= BC;
+                DE++;
             }
             A--;
             on $Z break;     // ループ回数処理したらここで打ち切り
             // ループ時の処理
-            DE>>; // 割る数の桁下がり
-            BC<<; // 商の桁上がり
+            BC>>; // 割る数の桁下がり
+            DE<<; // 商の桁上がり
         }
 
-        return BC;
+        return DE;
     }
+
 }
 

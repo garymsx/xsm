@@ -12,7 +12,7 @@ function DIVB(A,D) return A {
 }
 
 /**
- * 汎用剰余算処理、HL %= A を実行
+ * 汎用剰余算処理、A %= D を実行
  * @param  A  割られる数
  * @param  D  割る数
  * @return A  余り
@@ -25,7 +25,7 @@ function MODB(A,D) return A {
 }
 
 /**
- * 汎用割り算処理、HL /= A を実行
+ * 汎用割り算処理、A /= D を実行
  * @param  A  割られる数
  * @param  D  割る数
  * @return B  計算結果 (A 余り)

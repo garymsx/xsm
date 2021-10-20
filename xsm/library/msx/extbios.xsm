@@ -337,7 +337,7 @@ inline EXT_WRTVDP(C,B) using AF, BC {
 }
 
 /**
- * VDPのレジスタの内容を接待します。
+ * VDPのレジスタの内容を獲得します。
  * @type SUB/MSX2
  * @param A VDPのレジスタ番号(0～9)
  */
