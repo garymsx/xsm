@@ -128,56 +128,6 @@ function VSYNC(B = 1) {
     }
 }
 
-// /**
-//  * @param vx - 表示するX座標
-//  * @param vx - 表示するX座標
-//  */
-// function VIEW_MAP(shadow byte vx, shadow byte vy) {
-//     shadow byte x;
-//     shadow byte y;
-//     shadow byte[24][32] mapBuf; // 2x2のタイルデータを使ってマップを展開するバッファ
-//     shadow int pMap;
-
-//     clear mapBuf,0;
-
-//     // mapBufに展開
-//     unsafe(DE) {
-//         for(y = 0; y < 12; y++) {
-//             let C = y * 2;
-//             let pMap = &map[vy + y][vx]; // 表示するMAPの左上アドレス
-//             for(x = 0; x < 16; x++) {
-//                 using(BC) {
-//                     // mapBufの出力先の先頭アドレスを求める
-//                     let B = x * 2;
-//                     let HL = &mapBuf[C][B];
-
-//                     // 2x2のタイル構成テーブルから先頭アドレスを取得
-//                     using(HL) {
-//                         // マップからタイル番号を取り出して、タイルテーブルの先頭アドレスを求める
-//                         let BC = &tile[*pMap];
-//                     }
-//                     // 表示バッファに2x2ずつ埋めていく
-//                     let *HL = *BC;HL++;  BC++;
-//                     let *HL = *BC;HL+=31;BC++;
-//                     let *HL = *BC;HL++;  BC++;
-//                     let *HL = *BC;
-//                 }
-//                 pMap++;
-//             }
-//         }
-//     }
-
-//     // mapBufを表示
-//     di;
-//     HL = mapBuf;
-//     for(A = 0; A < 24; A++) {
-//         LOCATE(0,A);
-//         PRINT(HL, 32);
-//         HL += 32;
-//     }
-//     ei;
-// }
-
 // 2x2のタイルデータを使ってマップを展開するバッファ
 // 画面サイズ(32*24) + 周囲にスクロール用のバッファ
 shadow byte[24 + 4][32 + 4] mapBuf;  
