@@ -20,7 +20,7 @@ db 0,0,0,0,0,0;
 byte[] tmpFont   = from("ff2font.bmp"  , sc2     , rle);
 byte[] tmpSprite = from("ff2sprite.bmp", sp16    , rle);
 byte[] tmpTile   = from("ff2tile.tmx"  , tmxmap2 , rle);
-byte[] tmpMap    = from("ff2.tmx"      , tmxmap  , rle);
+byte[] tmpMap    = from("ff2.tmx"      , tmxmap  , rle2);
 
 // 各種リソース
 shadow byte[8*256*2]  font;    // キャラクタ(8byte) * 256 + 色データ(8byte) * 256
@@ -33,7 +33,9 @@ function main() {
     UNRLE(HL = font  , DE = tmpFont);
     UNRLE(HL = sprite, DE = tmpSprite);
     UNRLE(HL = tile  , DE = tmpTile);
-    UNRLE(HL = map   , DE = tmpMap);
+    unsafe {
+        UNRLE2(map, tmpMap, 64);
+    }
 
     // SCREEN 1
     EXT_CHGMDP(A = 1);
@@ -75,12 +77,13 @@ function main() {
         shadow byte y;
         x = 16;
         y = 16;
+
+        SET_MAPBUF(x,y);
+        VIEW_MAPBUF(2,2);
         do {
             // 画面表示
-            SET_MAPBUF(x,y);
+            // SET_MAPBUF(x,y);
             VIEW_MAPBUF(2,2);
-            // WAIT
-            VSYNC(B = 5);
             A = GTSTCK(A = 0); // カーソルキーの状態
             switch(A) {
                 case(1) {
@@ -88,24 +91,28 @@ function main() {
                         y--;
                         // スクロールの中間表示
                         VIEW_MAPBUF(2,1);
+                        SCROLL_UP(x,y);
                     }
                 }
                 case(3) {
                     if(x < 48) {
                         x++;
                         VIEW_MAPBUF(3,2);
+                        SCROLL_RIGHT(x,y);
                     }
                 }
                 case(5) {
                     if(y < 48) {
                         y++;
                         VIEW_MAPBUF(2,3);
+                        SCROLL_DOWN(x,y);
                     }
                 }
                 case(7) {
                     if(x >  0) {
                         x--;
                         VIEW_MAPBUF(1,2);
+                        SCROLL_LEFT(x,y);
                     }
                 }
             }
@@ -137,7 +144,11 @@ shadow byte[24 + 4][32 + 4] mapBuf;
  * @param vx - 表示するX座標
  * @param vx - 表示するX座標
  */
-function SET_MAPBUF(shadow byte vx, shadow byte vy) {
+function SET_MAPBUF(
+         shadow byte vx, shadow byte vy
+        // ,shadow byte sx, shadow byte sy
+        // ,shadow byte lx, shadow byte ly
+        ) {
     shadow byte x;
     shadow byte y;
     shadow int pMap;
@@ -145,36 +156,109 @@ function SET_MAPBUF(shadow byte vx, shadow byte vy) {
     // mapBufに展開
     unsafe(DE) {
         for(y = 0; y < 14; y++) {
-            let C = y * 2;
             let pMap = &map[vy + y][vx]; // 表示するMAPの左上アドレス
             for(x = 0; x < 18; x++) {
-                using(BC) {
-                    // mapBufの出力先の先頭アドレスを求める
-                    let B = x * 2;
-                    let HL = &mapBuf[C][B];
-
-                    // 2x2のタイル構成テーブルから先頭アドレスを取得
-                    using(HL) {
-                        // マップからタイル番号を取り出して、タイルテーブルの先頭アドレスを求める
-                        let BC = &tile[*pMap];
-                    }
-
-                    // 表示バッファに2x2ずつ埋めていく
-                    let *HL = *BC;HL++;  BC++;
-                    let *HL = *BC;HL+=35;BC++;
-                    let *HL = *BC;HL++;  BC++;
-                    let *HL = *BC;
-                }
+                byte tileNo;
+                let tileNo = *pMap;
+                SET_TILE(x, y, tileNo);
                 pMap++;
             }
         }
     }
 }
 
+function SCROLL_LEFT(shadow byte vx, shadow byte vy) {
+    shadow byte y;
+
+    unsafe(DE) {
+        HL = &mapBuf[27][33]; // 転送元
+        DE = &mapBuf[27][35]; // 転送先
+        BC = sizeof(mapBuf) - 2;
+        lddr;
+
+        for(y = 0; y < 14; y++) {
+             shadow byte tileNo;
+             let tileNo = map[vy + y][vx];
+             SET_TILE(0, y, tileNo);
+        }
+    }
+}
+
+function SCROLL_RIGHT(shadow byte vx, shadow byte vy) {
+    shadow byte y;
+
+    unsafe(DE) {
+        HL = &mapBuf[0][2]; // 転送元
+        DE = &mapBuf[0][0]; // 転送先
+        BC = sizeof(mapBuf) - 2;
+        ldir;
+
+        for(y = 0; y < 14; y++) {
+            shadow byte tileNo;
+            let tileNo = map[vy + y][vx + 17];
+            SET_TILE(17, y, tileNo);
+        }
+    }
+}
+
+function SCROLL_UP(shadow byte vx, shadow byte vy) {
+    shadow byte x;
+
+    unsafe(DE) {
+        HL = &mapBuf[25][35]; // 転送元
+        DE = &mapBuf[27][35]; // 転送先
+        BC = sizeof(mapBuf) - sizeof(mapBuf[0]) * 2;
+        lddr;
+
+        for(x = 0; x < 18; x++) {
+            shadow byte tileNo;
+            let tileNo = map[vy][vx + x];
+            SET_TILE(x, 0, tileNo);
+        }
+    }
+}
+
+function SCROLL_DOWN(shadow byte vx, shadow byte vy) {
+    shadow byte x;
+
+    unsafe(DE) {
+        HL = &mapBuf[2]; // 転送元
+        DE = &mapBuf[0]; // 転送先
+        BC = sizeof(mapBuf) - sizeof(mapBuf[0]) * 2;
+        ldir;
+
+        for(x = 0; x < 18; x++) {
+            shadow byte tileNo;
+            let tileNo = map[vy + 13][vx + x];
+            SET_TILE(x, 13, tileNo);
+        }
+    }
+}
+
+/**
+ * バッファ(x,y)にタイルをセット
+ * @param x
+ * @param y
+ */
+function SET_TILE(shadow byte x, shadow byte y, shadow byte tileNo) {
+    // マップからタイル番号を取り出して、タイルテーブルの先頭アドレスを求める
+    let BC = &tile[tileNo];
+    let HL = &mapBuf[y * 2][x * 2];
+
+    // 表示バッファに2x2ずつ埋めていく
+    let *HL = *BC;HL++;  BC++;
+    let *HL = *BC;HL+=35;BC++;
+    let *HL = *BC;HL++;  BC++;
+    let *HL = *BC;
+}
+
 function VIEW_MAPBUF(shadow byte vx, shadow byte vy) {
+    // WAIT
+    VSYNC(B = 1);
     // mapBufを表示
     di;
     let HL = &mapBuf[vy][vx];
+
     for(A = 0; A < 24; A++) {
         LOCATE(0,A);
         PRINT(HL, 32);
@@ -410,6 +494,24 @@ function UNRLE(HL, DE) {
         } else {
             // データ長が0なので終了する
             break;
+        }
+    }
+}
+
+/**
+ * RLE2圧縮を展開する(PackBits)
+ * @param HL 展開先アドレス
+ * @param DE RLE元データ
+ * @param B  heigh
+ */
+function UNRLE2(shadow int dst, shadow int src, shadow byte height) {
+    shadow byte y;
+    unsafe {
+        for(y = 0; y < height;y++) {
+            let DE = *(src + y * 2) + src;
+            let HL = dst;
+            UNRLE(HL,DE);
+            dst = HL;
         }
     }
 }

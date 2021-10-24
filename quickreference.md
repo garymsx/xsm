@@ -493,6 +493,11 @@
   byte data2 = 123;
   int ptr = &data2;
   let A = *ptr;         // A = 123;
+
+  // 16bitの場合の関節参照
+  int data3 = 1234;
+  int ptr = &data3;
+  let HL = *ptr;        // HL = 1234;
   ```
 
   let文は代入先が8bitの場合は8bit式、16bitの場合は16bit式として判断し使用されるレジスタが変わります。  
