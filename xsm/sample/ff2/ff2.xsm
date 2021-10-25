@@ -26,16 +26,16 @@ byte[] tmpMap    = from("ff2.tmx"      , tmxmap  , rle2);
 shadow byte[8*256*2]  font;    // キャラクタ(8byte) * 256 + 色データ(8byte) * 256
 shadow byte[3*32+3]   sprite;  // スプライト枚数 + 枚数分の色データ
 shadow byte[64][4]    tile;
-shadow byte[64][64]   map;
+//shadow byte[64][64]   map;
 
 function main() {
     // RLEデータ展開
     UNRLE(HL = font  , DE = tmpFont);
     UNRLE(HL = sprite, DE = tmpSprite);
     UNRLE(HL = tile  , DE = tmpTile);
-    unsafe {
-        UNRLE2(map, tmpMap, 64);
-    }
+    // unsafe {
+    //     UNRLE2(map, tmpMap, 64);
+    // }
 
     // SCREEN 1
     EXT_CHGMDP(A = 1);
@@ -151,17 +151,16 @@ function SET_MAPBUF(
         ) {
     shadow byte x;
     shadow byte y;
-    shadow int pMap;
 
     // mapBufに展開
     unsafe(DE) {
         for(y = 0; y < 14; y++) {
-            let pMap = &map[vy + y][vx]; // 表示するMAPの左上アドレス
             for(x = 0; x < 18; x++) {
                 byte tileNo;
-                let tileNo = *pMap;
+                let B = vx + x;
+                let C = vy + y;
+                tileNo = GET_TILE(B, C);
                 SET_TILE(x, y, tileNo);
-                pMap++;
             }
         }
     }
@@ -177,9 +176,11 @@ function SCROLL_LEFT(shadow byte vx, shadow byte vy) {
         lddr;
 
         for(y = 0; y < 14; y++) {
-             shadow byte tileNo;
-             let tileNo = map[vy + y][vx];
-             SET_TILE(0, y, tileNo);
+            shadow byte tileNo;
+            let B = vx;
+            let C = vy + y;
+            tileNo = GET_TILE(B, C);
+            SET_TILE(0, y, tileNo);
         }
     }
 }
@@ -195,7 +196,9 @@ function SCROLL_RIGHT(shadow byte vx, shadow byte vy) {
 
         for(y = 0; y < 14; y++) {
             shadow byte tileNo;
-            let tileNo = map[vy + y][vx + 17];
+            let B = vx + 17;
+            let C = vy + y;
+            tileNo = GET_TILE(B, C);
             SET_TILE(17, y, tileNo);
         }
     }
@@ -212,7 +215,9 @@ function SCROLL_UP(shadow byte vx, shadow byte vy) {
 
         for(x = 0; x < 18; x++) {
             shadow byte tileNo;
-            let tileNo = map[vy][vx + x];
+            let B = vx + x;
+            let C = vy;
+            tileNo = GET_TILE(B, C);
             SET_TILE(x, 0, tileNo);
         }
     }
@@ -229,7 +234,9 @@ function SCROLL_DOWN(shadow byte vx, shadow byte vy) {
 
         for(x = 0; x < 18; x++) {
             shadow byte tileNo;
-            let tileNo = map[vy + 13][vx + x];
+            let B = vx + x;
+            let C = vy + 13;
+            tileNo = GET_TILE(B, C);
             SET_TILE(x, 13, tileNo);
         }
     }
@@ -500,9 +507,9 @@ function UNRLE(HL, DE) {
 
 /**
  * RLE2圧縮を展開する(PackBits)
- * @param HL 展開先アドレス
- * @param DE RLE元データ
- * @param B  heigh
+ * @param dst 展開先アドレス
+ * @param src RLE元データ
+ * @param height マップの高さ
  */
 function UNRLE2(shadow int dst, shadow int src, shadow byte height) {
     shadow byte y;
@@ -513,5 +520,47 @@ function UNRLE2(shadow int dst, shadow int src, shadow byte height) {
             UNRLE(HL,DE);
             dst = HL;
         }
+    }
+}
+
+/**
+ * RLE2圧縮したマップデータからタイル番号を取得する
+ * @param X
+ * @param Y
+ * @return A 取得したタイル番号
+ */
+function GET_TILE(shadow byte x, shadow byte y) return A {
+    // 元データアドレス
+    let DE = *(tmpMap + y * 2) + tmpMap;
+    C = 0;    // 展開中X座標
+
+    unsafe {
+        while() {
+            A = *DE; // データ長
+            DE++;
+            if((+)A > 0) {
+                loop(A) {
+                    if(C >= x) {
+                        return  *DE;
+                    }
+                    C++;
+                }
+                DE++;
+            } else if((+)A < 0) {
+                // 値が連続しない場合
+                neg A;
+                loop(A) {
+                    if(C >= x) {
+                        return  *DE;
+                    }
+                    DE++;
+                    C++;
+                }
+            } else {
+                // データ長が0なので終了する
+                break;
+            }
+        }
+        return 'A';
     }
 }
