@@ -16,17 +16,19 @@ dw main,0,0,0;
 db 0,0,0,0,0,0;
 */
 
+const byte BLOCK_SIZE = 16;  // 16x16で分割
+const byte SPLIT_SIZE = 4;   // 64x64を16x16で分割するので4
+
 // RLE圧縮リソース
 byte[] tmpFont   = from("ff2font.bmp"  , sc2     , rle);
 byte[] tmpSprite = from("ff2sprite.bmp", sp16    , rle);
 byte[] tmpTile   = from("ff2tile.tmx"  , tmxmap2 , rle);
-byte[] tmpMap    = from("ff2.tmx"      , tmxmap  , rle2);
+byte[] tmpMap    = from("ff2.tmx"      , tmxmap  , rle2, BLOCK_SIZE, BLOCK_SIZE);
 
 // 各種リソース
 shadow byte[8*256*2]  font;    // キャラクタ(8byte) * 256 + 色データ(8byte) * 256
 shadow byte[3*32+3]   sprite;  // スプライト枚数 + 枚数分の色データ
 shadow byte[64][4]    tile;
-//shadow byte[64][64]   map;
 
 function main() {
     // RLEデータ展開
@@ -77,12 +79,16 @@ function main() {
         shadow byte y;
         x = 16;
         y = 16;
+        // x = 0;
+        // y = 0;
 
+        // WAIT
         SET_MAPBUF(x,y);
         VIEW_MAPBUF(2,2);
         do {
             // 画面表示
             // SET_MAPBUF(x,y);
+            VSYNC(B = 2);
             VIEW_MAPBUF(2,2);
             A = GTSTCK(A = 0); // カーソルキーの状態
             switch(A) {
@@ -90,20 +96,23 @@ function main() {
                     if(y >  0) {
                         y--;
                         // スクロールの中間表示
+                        VSYNC(B = 5);
                         VIEW_MAPBUF(2,1);
                         SCROLL_UP(x,y);
                     }
                 }
                 case(3) {
-                    if(x < 48) {
+                    if(x < 254) {
                         x++;
+                        VSYNC(B = 5);
                         VIEW_MAPBUF(3,2);
                         SCROLL_RIGHT(x,y);
                     }
                 }
                 case(5) {
-                    if(y < 48) {
+                    if(y < 254) {
                         y++;
+                        VSYNC(B = 5);
                         VIEW_MAPBUF(2,3);
                         SCROLL_DOWN(x,y);
                     }
@@ -111,6 +120,7 @@ function main() {
                 case(7) {
                     if(x >  0) {
                         x--;
+                        VSYNC(B = 5);
                         VIEW_MAPBUF(1,2);
                         SCROLL_LEFT(x,y);
                     }
@@ -144,11 +154,7 @@ shadow byte[24 + 4][32 + 4] mapBuf;
  * @param vx - 表示するX座標
  * @param vx - 表示するX座標
  */
-function SET_MAPBUF(
-         shadow byte vx, shadow byte vy
-        // ,shadow byte sx, shadow byte sy
-        // ,shadow byte lx, shadow byte ly
-        ) {
+function SET_MAPBUF(shadow byte vx, shadow byte vy) {
     shadow byte x;
     shadow byte y;
 
@@ -260,8 +266,6 @@ function SET_TILE(shadow byte x, shadow byte y, shadow byte tileNo) {
 }
 
 function VIEW_MAPBUF(shadow byte vx, shadow byte vy) {
-    // WAIT
-    VSYNC(B = 1);
     // mapBufを表示
     di;
     let HL = &mapBuf[vy][vx];
@@ -506,61 +510,68 @@ function UNRLE(HL, DE) {
 }
 
 /**
- * RLE2圧縮を展開する(PackBits)
- * @param dst 展開先アドレス
- * @param src RLE元データ
- * @param height マップの高さ
- */
-function UNRLE2(shadow int dst, shadow int src, shadow byte height) {
-    shadow byte y;
-    unsafe {
-        for(y = 0; y < height;y++) {
-            let DE = *(src + y * 2) + src;
-            let HL = dst;
-            UNRLE(HL,DE);
-            dst = HL;
-        }
-    }
-}
-
-/**
  * RLE2圧縮したマップデータからタイル番号を取得する
  * @param X
  * @param Y
  * @return A 取得したタイル番号
  */
 function GET_TILE(shadow byte x, shadow byte y) return A {
-    // 元データアドレス
-    let DE = *(tmpMap + y * 2) + tmpMap;
-    C = 0;    // 展開中X座標
+    shadow byte startx;
+    shadow byte starty;
+    shadow byte endx;
+    shadow byte endy;
+    let startx = x / BLOCK_SIZE;  // offsetテーブルX座標
+    let starty = y / BLOCK_SIZE;  // offsetテーブルY座標
+
+    shadow int rle;
+    // RLEテーブルから先頭アドレスを求める
+    let rle = *((starty * SPLIT_SIZE + startx) * 2 + tmpMap) + tmpMap; // 指定されたX,Yを含むマップのブロックを特定
+    HL = rle;
 
     unsafe {
+        // 速度を求める場合は&でマスクして最適化したほうがよい
+        let startx = x / BLOCK_SIZE * BLOCK_SIZE; // ブロック先頭X座標
+        let starty = y / BLOCK_SIZE * BLOCK_SIZE; // ブロック先頭Y座標
+        let endx = startx + BLOCK_SIZE;   // ブロック終了X座標
+        let endy = starty + BLOCK_SIZE;   // ブロック終了Y座標
+        let D = startx;
+        let E = starty;
         while() {
-            A = *DE; // データ長
-            DE++;
+            let A = *rle; // データ長
+            rle++;
             if((+)A > 0) {
                 loop(A) {
-                    if(C >= x) {
-                        return  *DE;
+                    // ターゲット座標到達
+                    if(D == x && E == y) {
+                        let A = *rle;
+                        return A;
                     }
-                    C++;
+                    D++;
+                    if(D == endx) {
+                        D = startx;
+                        E++;
+                    }
                 }
-                DE++;
+                rle++;
             } else if((+)A < 0) {
                 // 値が連続しない場合
                 neg A;
                 loop(A) {
-                    if(C >= x) {
-                        return  *DE;
+                    if(D == x && E == y) {
+                        let A = *rle;
+                        return A;
                     }
-                    DE++;
-                    C++;
+                    D++;
+                    if(D == endx) {
+                        D = startx;
+                        E++;
+                    }
+                    rle++;
                 }
             } else {
-                // データ長が0なので終了する
-                break;
+                break; // 長さデータ = 0の時だが、長さデータ0は作成されない
             }
         }
-        return 'A';
+        return 0;
     }
 }
