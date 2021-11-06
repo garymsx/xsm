@@ -7,21 +7,23 @@ import "/msx/workarea.xsm";
 import "/msx/bios.xsm";
 import "/msx/extbios.xsm";
 
-// このコメントを解除するとROM化出来ます
+// TODO:ROM化するとマップが化ける
+/*
 org 0x4000;
-org 0x8000,shadow;
+org 0xA000,shadow;
 dc @"AB";
 dw main,0,0,0;
 db 0,0,0,0,0,0;
+*/
 
-const byte BLOCK_SIZE = 16;  // 16x16で分割
-const byte SPLIT_SIZE = 4;   // 64x64を16x16で分割するので4
+const byte BLOCK_SIZE = 16;                // 16x16で分割 32にすると圧縮率が多少よくなるがZ80だと遅い
+const byte SPLIT_SIZE = 256 / BLOCK_SIZE;  // 256x256を16x16で分割するので16
 
 // RLE圧縮リソース
-byte[] tmpFont   = from("ff2font.bmp"  , sc2     , rle);
-byte[] tmpSprite = from("ff2sprite.bmp", sp16    , rle);
-byte[] tmpTile   = from("ff2tile.tmx"  , tmxmap2 , rle);
-byte[] tmpMap    = from("ff2.tmx"      , tmxmap  , rle2, BLOCK_SIZE, BLOCK_SIZE);
+byte[] tmpFont   = from("dq3font.bmp"  , sc2     , rle);
+byte[] tmpSprite = from("dq3sprite.bmp", sp16    , rle);
+byte[] tmpTile   = from("dq3tile.tmx"  , tmxmap2 , rle);
+byte[] tmpMap    = from("dq3map.tmx"   , tmxmap  , dicrle, BLOCK_SIZE, BLOCK_SIZE);
 
 // 各種リソース
 shadow byte[8*256*2]  font;    // キャラクタ(8byte) * 256 + 色データ(8byte) * 256
@@ -33,6 +35,9 @@ function main() {
     UNRLE(HL = font  , DE = tmpFont);
     UNRLE(HL = sprite, DE = tmpSprite);
     UNRLE(HL = tile  , DE = tmpTile);
+    // unsafe {
+    //     UNRLE2(map, tmpMap, 64);
+    // }
 
     // SCREEN 1
     EXT_CHGMDP(A = 1);
@@ -72,18 +77,17 @@ function main() {
         // WAIT SPACE KEY
         shadow byte x;
         shadow byte y;
-        x = 16;
-        y = 16;
-        // x = 0;
-        // y = 0;
+        x = 162;
+        y = 207;
 
         // WAIT
+        INIT_MAP();
         SET_MAPBUF(x,y);
         VIEW_MAPBUF(2,2);
         do {
             // 画面表示
             // SET_MAPBUF(x,y);
-            VSYNC(B = 2);
+            VSYNC(B = 1);
             VIEW_MAPBUF(2,2);
             A = GTSTCK(A = 0); // カーソルキーの状態
             switch(A) {
@@ -504,6 +508,20 @@ function UNRLE(HL, DE) {
     }
 }
 
+shadow int  mapDic;   // 辞書データの開始アドレス
+shadow byte startx;   // ブロック開始X座標
+shadow byte starty;   // ブロック開始Y座標
+shadow byte endx;     // ブロック終了X座標
+shadow byte endy;     // ブロック終了Y座標
+shadow int  startrle; // ブロック開始アドレス
+shadow int  blockNo;  // 展開中のブロック番号
+shadow int  rle;      // 展開中のRLEアドレス
+
+function INIT_MAP() {
+    let mapDic = SPLIT_SIZE * SPLIT_SIZE * 2 + tmpMap;
+    let blockNo = 0xffff;
+}
+
 /**
  * RLE2圧縮したマップデータからタイル番号を取得する
  * @param X
@@ -511,24 +529,33 @@ function UNRLE(HL, DE) {
  * @return A 取得したタイル番号
  */
 function GET_TILE(shadow byte x, shadow byte y) return A {
-    shadow byte startx;
-    shadow byte starty;
-    shadow byte endx;
-    shadow byte endy;
-    let startx = x / BLOCK_SIZE;  // offsetテーブルX座標
-    let starty = y / BLOCK_SIZE;  // offsetテーブルY座標
+    let B = x / BLOCK_SIZE;  // offsetテーブルX座標
+    let C = y / BLOCK_SIZE;  // offsetテーブルY座標
 
-    shadow int rle;
     // RLEテーブルから先頭アドレスを求める
-    let rle = *((starty * SPLIT_SIZE + startx) * 2 + tmpMap) + tmpMap; // 指定されたX,Yを含むマップのブロックを特定
-    HL = rle;
+    let C = C * SPLIT_SIZE + B;             // ブロック番号を特定
+    B = 0;                                  // Cレジスタ値の16bit拡張
 
     unsafe {
-        // 速度を求める場合は&でマスクして最適化したほうがよい
-        let startx = x / BLOCK_SIZE * BLOCK_SIZE; // ブロック先頭X座標
-        let starty = y / BLOCK_SIZE * BLOCK_SIZE; // ブロック先頭Y座標
-        let endx = startx + BLOCK_SIZE;   // ブロック終了X座標
-        let endy = starty + BLOCK_SIZE;   // ブロック終了Y座標
+        // 前回と同じブロック番号の場合初期設定を省略
+        if(BC != blockNo) {
+            let startrle = *(C * 2 + tmpMap) + tmpMap; // 指定されたX,Yを含むマップのブロック先頭アドレス
+            // ブロック先頭座標を求める(BLOCK_SIZEの倍数にまるめる)
+            if(BLOCK_SIZE == 16) { // 確定条件式の為、実際には分岐処理は展開されない
+                let startx = x & 0b11110000;
+                let starty = y & 0b11110000;
+            } else if(BLOCK_SIZE == 32) {
+                let startx = x & 0b11100000;
+                let starty = y & 0b11100000;
+            } else {
+                // 16,32以外の分割はNG
+            }
+            let endx = startx + BLOCK_SIZE;   // ブロック終了X座標
+            let endy = starty + BLOCK_SIZE;   // ブロック終了Y座標
+            let blockNo = BC;
+        }
+
+        let rle = startrle;
         let D = startx;
         let E = starty;
         while() {
@@ -536,32 +563,91 @@ function GET_TILE(shadow byte x, shadow byte y) return A {
             rle++;
             if((+)A > 0) {
                 loop(A) {
+                    let H = x;
+                    let L = y;
                     // ターゲット座標到達
-                    if(D == x && E == y) {
-                        let A = *rle;
+                    // HL == DEとしたかったが遅い
+                    if(D == H && E == L) {
+                        A = GET_DIC_TILE(0);
                         return A;
                     }
                     D++;
+
+                    if(D == H && E == L) {
+                        A = GET_DIC_TILE(1);
+                        return A;
+                    }
+                    D--;E++;
+
+                    if(D == H && E == L) {
+                        A = GET_DIC_TILE(2);
+                        return A;
+                    }
+                    D++;
+
+                    if(D == H && E == L) {
+                        A = GET_DIC_TILE(3);
+                        return A;
+                    }
+
+                    D++;E--;
                     if(D == endx) {
                         D = startx;
-                        E++;
+                        E++;E++;
                     }
                 }
-                rle++;
+                HL = rle;
+                A = *HL;
+                if(A != 255) {
+                    HL++;
+                } else {
+                    HL += 5;
+                }
+                rle = HL;
             } else if((+)A < 0) {
-                // 値が連続しない場合
                 neg A;
+                // 値が連続しない場合
                 loop(A) {
-                    if(D == x && E == y) {
-                        let A = *rle;
+                    let H = x;
+                    let L = y;
+                    // ターゲット座標到達
+                    if(D == H && E == L) {
+                        A = GET_DIC_TILE(0);
                         return A;
                     }
                     D++;
+
+                    if(D == H && E == L) {
+                        A = GET_DIC_TILE(1);
+                        return A;
+                    }
+                    D--;E++;
+
+                    if(D == H && E == L) {
+                        A = GET_DIC_TILE(2);
+                        return A;
+                    }
+                    D++;
+
+                    if(D == H && E == L) {
+                        A = GET_DIC_TILE(3);
+                        return A;
+                    }
+                    D++;E--;
+
                     if(D == endx) {
                         D = startx;
-                        E++;
+                        E++;E++;
                     }
-                    rle++;
+
+                    HL = rle;
+                    A = *HL;
+                    if(A != 255) {
+                        HL++;
+                    } else {
+                        HL += 5;
+                    }
+                    rle = HL;
                 }
             } else {
                 break; // 長さデータ = 0の時だが、長さデータ0は作成されない
@@ -569,4 +655,36 @@ function GET_TILE(shadow byte x, shadow byte y) return A {
         }
         return 0;
     }
+}
+
+/**
+ * 辞書テーブルからタイルを取得する
+ * @param HL - 展開中のrleアドレス
+ * @param B  - タイル位置 0-(0,0) 1-(1,0) 2-(0,1) 3-(1,1)
+ * @returns A - タイル
+ */
+function GET_DIC_TILE(C) return A {
+
+    using(BC, DE, HL) {
+        unsafe {
+            let HL = rle;
+            let A = *HL;
+
+            // 辞書データの場合
+            if(A != 255) {
+                // 辞書A番を取り出す
+                let HL = mapDic + A * 4; // 辞書先頭アドレス
+            } else {
+                // 辞書がないので続く４バイトがタイルデータ
+                HL++;
+            }
+
+            for(A = 0;A < 4;A++) {
+                if(A == C) return *HL;
+                HL++;
+            }
+
+        }
+    }
+    
 }
