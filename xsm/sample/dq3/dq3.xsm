@@ -91,7 +91,7 @@ function main() {
                     if(y >  0) {
                         y--;
                         // スクロールの中間表示
-                        VSYNC(B = 5);
+                        VSYNC(B = 3);
                         VIEW_MAPBUF(2,1);
                         SCROLL_UP(x,y);
                     }
@@ -99,7 +99,7 @@ function main() {
                 case(3) {
                     if(x < 254) {
                         x++;
-                        VSYNC(B = 5);
+                        VSYNC(B = 3);
                         VIEW_MAPBUF(3,2);
                         SCROLL_RIGHT(x,y);
                     }
@@ -107,7 +107,7 @@ function main() {
                 case(5) {
                     if(y < 254) {
                         y++;
-                        VSYNC(B = 5);
+                        VSYNC(B = 3);
                         VIEW_MAPBUF(2,3);
                         SCROLL_DOWN(x,y);
                     }
@@ -115,7 +115,7 @@ function main() {
                 case(7) {
                     if(x >  0) {
                         x--;
-                        VSYNC(B = 5);
+                        VSYNC(B = 3);
                         VIEW_MAPBUF(1,2);
                         SCROLL_LEFT(x,y);
                     }
@@ -271,6 +271,9 @@ function VIEW_MAPBUF(shadow byte vx, shadow byte vy) {
         HL += 36;
     }
     ei;
+
+    // 初期化
+    let blockNo = 0xffff;
 }
 
 // VDPポート番号
@@ -509,9 +512,13 @@ shadow byte startx;   // ブロック開始X座標
 shadow byte starty;   // ブロック開始Y座標
 shadow byte endx;     // ブロック終了X座標
 shadow byte endy;     // ブロック終了Y座標
-shadow int  startrle; // ブロック開始アドレス
 shadow int  blockNo;  // 展開中のブロック番号
+shadow int  startrle; // 展開するブロックの先頭アドレス
 shadow int  rle;      // 展開中のRLEアドレス
+
+shadow byte procx;    // 処理中X座標
+shadow byte procy;    // 処理中Y座標
+shadow int  procrle;  // 展開中のRLEアドレス
 
 function INIT_MAP() {
     // 辞書のアドレスを特定しておく
@@ -530,13 +537,14 @@ function GET_TILE(shadow byte x, shadow byte y) return A {
     let B = x / BLOCK_SIZE;  // offsetテーブルX座標
     let C = y / BLOCK_SIZE;  // offsetテーブルY座標
 
-    // RLEテーブルから先頭アドレスを求める
     let C = C * SPLIT_SIZE + B;             // ブロック番号を特定
     B = 0;                                  // Cレジスタ値の16bit拡張
 
     unsafe {
         // 前回と同じブロック番号の場合初期設定を省略
         if(BC != blockNo) {
+            let blockNo = BC;
+            // RLEテーブルの先頭アドレスを求める
             let startrle = *(C * 2 + tmpMap) + tmpMap; // 指定されたX,Yを含むマップのブロック先頭アドレス
             // ブロック先頭座標を求める(BLOCK_SIZEの倍数にまるめる)
             if(BLOCK_SIZE == 16) { // 確定条件式の為、実際には分岐処理は展開されない
@@ -550,19 +558,32 @@ function GET_TILE(shadow byte x, shadow byte y) return A {
             }
             let endx = startx + BLOCK_SIZE;   // ブロック終了X座標
             let endy = starty + BLOCK_SIZE;   // ブロック終了Y座標
-            let blockNo = BC;
+            rle = startrle;
+            D = startx;
+            E = starty;
+        } else {
+            // rle = startrle;
+            // D = startx;
+            // E = starty;
+
+            // 前回の続きから
+            D = procx;
+            E = procy;
+            rle = procrle;
         }
 
-        let rle = startrle;
-        let D = startx;
-        let E = starty;
         while() {
+            // 途中状態を保存
+            procx = D;
+            procy = E;
+            procrle = rle;
+
             let A = *rle; // データ長
             rle++;
             if((+)A > 0) {
                 loop(A) {
-                    let H = x;
-                    let L = y;
+                    H = x;
+                    L = y;
                     // ターゲット座標到達
                     // HL == DEとしたかったが遅い
                     if(D == H && E == L) {
@@ -608,8 +629,8 @@ function GET_TILE(shadow byte x, shadow byte y) return A {
                 neg A;
                 // 値が連続しない場合
                 loop(A) {
-                    let H = x;
-                    let L = y;
+                    H = x;
+                    L = y;
                     // ターゲット座標到達
                     // (x,y) (x + 1,y) (x,y + 1) (x + 1,y + 1)の順に判定していく
                     if(D == H && E == L) {
