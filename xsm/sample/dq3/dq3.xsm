@@ -8,13 +8,11 @@ import "/msx/bios.xsm";
 import "/msx/extbios.xsm";
 
 // TODO:ROM化するとマップが化ける
-/*
-org 0x4000;
-org 0xA000,shadow;
-dc @"AB";
-dw main,0,0,0;
-db 0,0,0,0,0,0;
-*/
+// org 0x4000;
+// org 0xC000,shadow;
+// dc @"AB";
+// dw main,0,0,0;
+// db 0,0,0,0,0,0;
 
 const byte BLOCK_SIZE = 16;                // 16x16で分割 32にすると圧縮率が多少よくなるがZ80だと遅い
 const byte SPLIT_SIZE = 256 / BLOCK_SIZE;  // 256x256を16x16で分割するので16
@@ -24,6 +22,7 @@ byte[] tmpFont   = from("dq3font.bmp"  , sc2     , rle);
 byte[] tmpSprite = from("dq3sprite.bmp", sp16    , rle);
 byte[] tmpTile   = from("dq3tile.tmx"  , tmxmap2 , rle);
 byte[] tmpMap    = from("dq3map.tmx"   , tmxmap  , dicrle, BLOCK_SIZE, BLOCK_SIZE);
+byte[15510] dummy;
 
 // 各種リソース
 shadow byte[8*256*2]  font;    // キャラクタ(8byte) * 256 + 色データ(8byte) * 256
@@ -35,9 +34,6 @@ function main() {
     UNRLE(HL = font  , DE = tmpFont);
     UNRLE(HL = sprite, DE = tmpSprite);
     UNRLE(HL = tile  , DE = tmpTile);
-    // unsafe {
-    //     UNRLE2(map, tmpMap, 64);
-    // }
 
     // SCREEN 1
     EXT_CHGMDP(A = 1);
@@ -518,14 +514,16 @@ shadow int  blockNo;  // 展開中のブロック番号
 shadow int  rle;      // 展開中のRLEアドレス
 
 function INIT_MAP() {
+    // 辞書のアドレスを特定しておく
     let mapDic = SPLIT_SIZE * SPLIT_SIZE * 2 + tmpMap;
+    // ブロック番号をリセット
     let blockNo = 0xffff;
 }
 
 /**
  * RLE2圧縮したマップデータからタイル番号を取得する
- * @param X
- * @param Y
+ * @param x
+ * @param y
  * @return A 取得したタイル番号
  */
 function GET_TILE(shadow byte x, shadow byte y) return A {
@@ -598,6 +596,8 @@ function GET_TILE(shadow byte x, shadow byte y) return A {
                 }
                 HL = rle;
                 A = *HL;
+                // A <= 254は辞書参照なので1バイト進める
+                // A = 255は続く4バイトがタイルデータなので+5バイト進める
                 if(A != 255) {
                     HL++;
                 } else {
@@ -611,6 +611,7 @@ function GET_TILE(shadow byte x, shadow byte y) return A {
                     let H = x;
                     let L = y;
                     // ターゲット座標到達
+                    // (x,y) (x + 1,y) (x,y + 1) (x + 1,y + 1)の順に判定していく
                     if(D == H && E == L) {
                         A = GET_DIC_TILE(0);
                         return A;
@@ -642,6 +643,8 @@ function GET_TILE(shadow byte x, shadow byte y) return A {
 
                     HL = rle;
                     A = *HL;
+                    // A <= 254は辞書参照なので1バイト進める
+                    // A = 255は続く4バイトがタイルデータなので+5バイト進める
                     if(A != 255) {
                         HL++;
                     } else {
@@ -659,8 +662,7 @@ function GET_TILE(shadow byte x, shadow byte y) return A {
 
 /**
  * 辞書テーブルからタイルを取得する
- * @param HL - 展開中のrleアドレス
- * @param B  - タイル位置 0-(0,0) 1-(1,0) 2-(0,1) 3-(1,1)
+ * @param C  - タイル位置 0-(0,0) 1-(1,0) 2-(0,1) 3-(1,1)
  * @returns A - タイル
  */
 function GET_DIC_TILE(C) return A {
