@@ -1,11 +1,7 @@
-import "/lang/mul.xsm";
-import "/lang/mulw.xsm";
-import "/lang/div.xsm";
-import "/lang/divw.xsm";
-
 import "/msx/workarea.xsm";
 import "/msx/bios.xsm";
 import "/msx/extbios.xsm";
+import "charmap.xsm";
 
 // TODO:ROM化するとマップが化ける
 // org 0x4000;
@@ -22,12 +18,12 @@ byte[] tmpFont   = from("dq3font.bmp"  , sc2     , rle);
 byte[] tmpSprite = from("dq3sprite.bmp", sp16    , rle);
 byte[] tmpTile   = from("dq3tile.tmx"  , tmxmap2 , rle);
 byte[] tmpMap    = from("dq3map.tmx"   , tmxmap  , dicrle, BLOCK_SIZE, BLOCK_SIZE);
-byte[15510] dummy;
 
 // 各種リソース
 shadow byte[8*256*2]  font;    // キャラクタ(8byte) * 256 + 色データ(8byte) * 256
 shadow byte[3*32+3]   sprite;  // スプライト枚数 + 枚数分の色データ
 shadow byte[64][4]    tile;
+shadow byte           coastFlag;
 
 function main() {
     // RLEデータ展開
@@ -75,6 +71,7 @@ function main() {
         shadow byte y;
         x = 162;
         y = 207;
+        coastFlag = 0;
 
         // WAIT
         INIT_MAP();
@@ -122,6 +119,18 @@ function main() {
                 }
             }
 
+            // KEY状態
+            A = SNSMAT(6);
+            if(res5(A)) {        // F1
+                // 海岸線ON/OFF
+                coastFlag ^= 0xff;
+                SET_MAPBUF(x,y);
+                VIEW_MAPBUF(2,2);
+            } else if(res6(A)) { // F2
+                // 文字表示
+                SET_STRING(5,4, " HELLO DQ WORLD ");
+            }
+
             A = GTTRIG(A = 0); // スペースキーで終了
 
         } while(A == 0);
@@ -164,6 +173,11 @@ function SET_MAPBUF(shadow byte vx, shadow byte vy) {
                 SET_TILE(x, y, tileNo);
             }
         }
+        for(y = 1; y < 13; y++) {
+            for(x = 1; x < 17; x++) {
+                SET_COASTLINE(x, y);
+            }
+        }
     }
 }
 
@@ -183,6 +197,11 @@ function SCROLL_LEFT(shadow byte vx, shadow byte vy) {
             tileNo = GET_TILE(B, C);
             SET_TILE(0, y, tileNo);
         }
+
+        for(y = 1; y < 13; y++) {
+            SET_COASTLINE(1, y);
+        }
+
     }
 }
 
@@ -202,6 +221,11 @@ function SCROLL_RIGHT(shadow byte vx, shadow byte vy) {
             tileNo = GET_TILE(B, C);
             SET_TILE(17, y, tileNo);
         }
+
+        for(y = 1; y < 13; y++) {
+            SET_COASTLINE(16, y);
+        }
+
     }
 }
 
@@ -221,6 +245,10 @@ function SCROLL_UP(shadow byte vx, shadow byte vy) {
             tileNo = GET_TILE(B, C);
             SET_TILE(x, 0, tileNo);
         }
+
+        for(x = 1; x < 17; x++) {
+            SET_COASTLINE(x, 1);
+        }
     }
 }
 
@@ -239,6 +267,10 @@ function SCROLL_DOWN(shadow byte vx, shadow byte vy) {
             let C = vy + 13;
             tileNo = GET_TILE(B, C);
             SET_TILE(x, 13, tileNo);
+        }
+
+        for(x = 1; x < 17; x++) {
+            SET_COASTLINE(x, 12);
         }
     }
 }
@@ -260,6 +292,25 @@ function SET_TILE(shadow byte x, shadow byte y, shadow byte tileNo) {
     let *HL = *BC;
 }
 
+/**
+ * バッファ(x,y)に文字列をセット
+ * @param x
+ * @param y
+ */
+function SET_STRING(shadow byte x, shadow byte y, shadow string text) {
+    // マップからタイル番号を取り出して、タイルテーブルの先頭アドレスを求める
+    unsafe {
+        let BC = &mapBuf[y * 2][x * 2];
+        while() {
+            let A = *text;
+            if(A == 0) break;
+            let *BC = A;
+            BC++;
+            text++;
+        }
+    }
+}
+
 function VIEW_MAPBUF(shadow byte vx, shadow byte vy) {
     // mapBufを表示
     di;
@@ -274,6 +325,56 @@ function VIEW_MAPBUF(shadow byte vx, shadow byte vy) {
 
     // 初期化
     let blockNo = 0xffff;
+}
+
+/**
+ * バッファ(x,y)にタイルをセット
+ * @param x
+ * @param y
+ */
+function SET_COASTLINE(shadow byte x, shadow byte y) {
+    shadow byte coast;
+    byte[] coasts = {
+          0x1c  // 変化なし
+        , 0x0e  // 0001 上 
+        , 0x1e  // 0010 下
+        , 0x23  // 0011 上下
+        , 0x15  // 0100 左 
+        , 0x0d  // 0101 左上 
+        , 0x1d  // 0110 左下
+        , 0x24  // 0111 左上下
+        , 0x17  // 1000 右
+        , 0x0f  // 1001 右上 
+        , 0x1f  // 1010 右下
+        , 0x25  // 1011 右上下
+        , 0x1b  // 1100 右左 
+        , 0x26  // 1101 右左上 
+        , 0x27  // 1110 右左下
+        , 0x16  // 1111 全部
+    }
+
+    unsafe {
+        if(coastFlag == 0) return;
+
+        let B = x * 2;
+        let C = y * 2;
+        let A = mapBuf[C][B];
+        if(A == 0x4c) {
+            let coast = 0;
+            let A = mapBuf[C - 2][B   ];  // 上
+            if(A <= 0x1f) {set coast, 0;}
+            let A = mapBuf[C + 2][B   ];  // 下
+            if(A <= 0x1f) {set coast,1;}
+            let A = mapBuf[C    ][B - 2]; // 左
+            if(A <= 0x1f) {set coast,2;}
+            let A = mapBuf[C    ][B + 2]; // 右
+            if(A <= 0x1f) {set coast,3;}
+
+            // 海岸線を決定
+            let B = coasts[coast];
+            SET_TILE(x, y, B);
+        }
+    }
 }
 
 // VDPポート番号

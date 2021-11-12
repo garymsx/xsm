@@ -588,6 +588,18 @@
   } 
   ```
 
+- キャラクタコード変更
+  ```
+  // キャラクタコードのマッピングを変更します。
+  charmap('A',0xa1);
+  charmap('B',0xa2);
+  …
+  charmap('Y',0xa6);
+  charmap('Z',0xba);
+
+  char[] foo = "AB";  // -> 0xa1,0xa2と出力される。
+  ```
+
 - メッセージ関数(error/warn/info)
 
   ```

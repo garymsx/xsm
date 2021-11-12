@@ -896,7 +896,7 @@ inline RDVDP() return A using A {
  * @return A データ(押されているキーに対応するビットが0になる)
  * @using AF,C
  */
-inline SNSMAT(A) using AF,C {
+inline SNSMAT(A) return A using C {
 	CALSLT(IX = 0x0141);
 }
 

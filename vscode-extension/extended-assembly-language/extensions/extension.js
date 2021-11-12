@@ -45,20 +45,20 @@ function activate(context) {
 function analyzeUpdate(uri) {
     if(analyzer.busy) return;
     analyzer.busy = true;
-
     (async() => {
         if(uri != undefined) {
             // 単ファイル
             await analyzePass1([uri]);
             analyzePass2([uri]);
-            analyzer.busy = false;
         } else {
+            console.log("refresh workspace - start");
             // ワークスペース全体更新
             const uriList = await vscode.workspace.findFiles("**/*.xsm");
             await analyzePass1(uriList);
             analyzePass2(uriList);
-            analyzer.busy = false;
+            console.log("refresh workspace - end");
         }
+        analyzer.busy = false;
     })();
 }
 

@@ -23,6 +23,10 @@ module.exports = class XsmAnalyzer {
     analyzePass1(uri) {
         const path = XsmUtils.getPath(uri);
 
+        if(path == "/debug.xsm") {
+            console.log("stop");
+        }
+
         // 対象ファイル初期化
         this.clearMembers(path);
 

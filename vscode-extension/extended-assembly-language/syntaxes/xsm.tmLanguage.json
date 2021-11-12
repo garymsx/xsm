@@ -128,7 +128,7 @@
 			"patterns": [
 				{
 					"name": "support.function.xsm",
-					"match": "\\b(bin|qtr|oct|hex|sizeof|length|offset|debug|error|warn|info|typename)\\b"
+					"match": "\\b(bin|qtr|oct|hex|sizeof|length|offset|debug|error|warn|info|set[0-7]|res[0-7]|typename|charmap)\\b"
 				}
 			]
 		},
