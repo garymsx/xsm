@@ -1,5 +1,6 @@
 module.exports.PARSE_LABEL            = "[a-zA-Z_][\\w]*:";                           // label
 module.exports.PARSE_WORD             = "[a-zA-Z_][\\w]*";                            // alpnum
+module.exports.PARSE_REGISTER         = "ixh|ixl|iyh|iyl|af|bc|de|hl|ix|iy|sp|a|b|c|d|e|h|l|it|rf";
 module.exports.PARSE_NUMBER           = "[0-9][\\w\\.]*";                             // number
 module.exports.PARSE_STRING           = "@?\"(\\\"|[^\"])*?\"|@?`(\\`|[^`])*?`";      // string
 module.exports.PARSE_CHAR             = "'(\\`|[^'])*?'";                             // char
@@ -11,6 +12,7 @@ module.exports.PARSE_SPACE            = "\\s+";                                 
 module.exports.PARSE_CR               = "\n";
 
 module.exports.MATCH_LABEL            = new RegExp("^(" + module.exports.PARSE_LABEL + ")$");
+module.exports.MATCH_REGISTER         = new RegExp("^(" + module.exports.PARSE_REGISTER + ")$", "i");
 module.exports.MATCH_WORD             = new RegExp("^(" + module.exports.PARSE_WORD + ")$");
 module.exports.MATCH_NUMBER           = new RegExp("^(" + module.exports.PARSE_NUMBER + ")$");
 module.exports.MATCH_STRING           = new RegExp("^(" + module.exports.PARSE_STRING + ")$");

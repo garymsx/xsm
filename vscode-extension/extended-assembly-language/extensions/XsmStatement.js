@@ -80,8 +80,14 @@ module.exports = class XsmStatement {
             if(tokens.value() == ".") tokens.next();
             // 配列であれば読み飛ばす
             tokens.skipRevArray();
-            // 変数
-            if(tokens.value().match(XsmConsts.MATCH_WORD)) {
+
+            let token = tokens.current();
+            if(token.value.match(XsmConsts.MATCH_REGISTER) ||
+               token.value.match(XsmConsts.MATCH_BLOCK)) {
+                // レジスタ、ブロックの場合保留
+                tokens.next();
+            } else if(token.value.match(XsmConsts.MATCH_WORD)) {
+                // 変数、構造体名
                 members.push(tokens.next().value);
             } else {
                 // ここで切れた
