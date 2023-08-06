@@ -1,5 +1,8 @@
 # Z80用 クロスアセンブラ XSM マニュアル
 
+こちらの開発は終了しました。  
+現在はvscodeの拡張機能として開発を継続しています。[xsm-vscode-extension](https://github.com/garymsx/xsm-vscode-extension)  
+
 ## 更新情報
 - ver 0.26
     - let文でレジスタを構造体でキャスト出来るようにした。
